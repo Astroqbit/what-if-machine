@@ -46,18 +46,51 @@ The agent gives a local model structured tools, records what really happened, ch
 
 ## How it works
 
+<div align="center">
+  <img src="assets/how-it-works.gif" width="100%" alt="Animated source-accurate What-If Machine execution, verification, reflection, and episode-memory pipeline">
+</div>
+
+What-If Machine is not a single prompt followed by a best-effort answer. It is a bounded, evidence-carrying control loop. Before work begins, it probes the local environment and searches prior episodes for lessons; while work is running, every tool result updates a trajectory ledger; when the model tries to finish, mechanical checks compare that verdict with what actually ran.
+
 ```mermaid
 flowchart TD
-    R[Technical requirement] --> A{Agent mode}
-    A -->|Build| B[Inspect and modify]
-    A -->|Plan| P[Read-only analysis]
-    B --> T[Run tools and tests]
-    P --> E[Produce implementation plan]
-    T --> V{Evidence supports completion?}
-    V -->|No| D[Diagnose and repair]
-    D --> T
-    V -->|Yes| M[Record episode and report]
+    Q["Task + CLI configuration"] --> P["Probe OS, Python, packages, cwd"]
+    P --> R["Semantic episode search"]
+    R --> F["Stored quality + grounding filter"]
+    F -->|Default: review candidates| M
+    F -->|/inject on| J["No-tools relevance judge"]
+    J --> C["Inject validated lessons"]
+
+    C --> M{"Agent mode"}
+    M -->|Build| B["Read · search · write · edit · bash"]
+    M -->|Plan| L["Read · list · search"]
+    B --> O["Ollama agent loop"]
+    L --> O
+
+    O -->|Structured tool calls| X["Path-checked ToolExecutor"]
+    X --> E["Normalize result into trajectory evidence"]
+    E --> O
+
+    O -->|Tool-less verdict| G["Conditional completion checks"]
+    G -->|Repair evidence| O
+    G -->|Accepted response| A["Mechanical outcome ledger"]
+    A --> H["Judge-grounded reflection"]
+    H --> Z["Save episode + return report"]
 ```
+
+### The control loop, precisely
+
+| Stage | What the current source does | Evidence carried forward |
+|---|---|---|
+| **Bootstrap** | Builds separate builder and pinned judge clients, probes the workspace, and exposes tools according to Build or Plan mode. | Model, seed, temperature, Ollama version, platform facts, and allowed tool schemas. |
+| **Recall** | Searches episode embeddings for up to 50 candidates and drops low-quality or ungrounded records. When `/inject` is on, the no-tools judge decides which lessons transfer; injection is off by default for review. | Candidates remain reviewable; only judge-validated lessons enter system context when injection is enabled. |
+| **Think → act** | Calls Ollama's `/api/chat`; structured calls pass through path validation, a command allowlist, timeouts, duplicate suppression, and destructive-pattern checks. | Actual arguments, normalized results, success state, token counts, and retained reasoning for later review. |
+| **Diagnose → repair** | Tool failures, red tests, edit spirals, assertion weakening, silent exception swallowing, stalls, and protocol errors produce bounded corrective feedback instead of being mistaken for progress. | The next iteration sees the measured failure and the relevant repair instruction. |
+| **Verify completion** | A tool-less answer can trigger edit/test-debt checks, coverage and assertion feedback, a real entry-point smoke run, and a final-claim check. Applicable failures feed back into the loop. | Passing and failing test order, latest edits, script outcomes, coverage snapshots, smoke results, and claim conflicts remain distinct. |
+| **Finish → learn** | Mechanical rules can downgrade an unsupported success. The pinned judge creates an evidence-grounded reflection, with a code-derived fallback if needed, and the full episode is stored. | Outcome, root cause, fix, verification, confidence, grounding, trajectory, settings, tokens, thinking log, and optional embedding. |
+
+> [!IMPORTANT]
+> Checks are conditional on the artifact and the evidence available in that run. Mutation-testing infrastructure exists, but the current V180 source sets `MUTATION_MAX_FIRES = 0`, so mutation rounds are disabled by default.
 
 ### Built-in tools
 
