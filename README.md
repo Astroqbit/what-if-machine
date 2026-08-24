@@ -132,7 +132,7 @@ python what_if_machine.py --dir C:\path\to\workspace
 Single-prompt mode:
 
 ```powershell
-python what_if_machine.py --model ornith:35b --dir C:\path\to\workspace "Build a small Python utility and verify it."
+python what_if_machine.py --model ornith:35b "Build a small Python utility and verify it."
 ```
 
 Useful options:
