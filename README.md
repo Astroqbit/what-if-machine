@@ -1,6 +1,6 @@
 <div align="center">
 
-  <img src="assets/icon.svg" width="128" alt="What-If Machine glowing portal icon">
+  <img src="assets/what-if-machine-icon.gif" width="144" alt="Animated What-If Machine logo showing a scenario entering an IF processor, branching into two possibilities, and resolving through an evidence check">
 
   # What-If Machine
 
