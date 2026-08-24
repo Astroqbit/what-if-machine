@@ -1,0 +1,139 @@
+name: "🧪 Model or verification failure"
+description: "Submit a reproducible false-success, tool-use, repair-loop, or evidence-quality failure."
+title: "[Model failure]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Evidence-first failure report
+
+        Use this form when a run completed incorrectly, ignored tools, weakened tests, misread evidence, repeated unproductive work, or reported success without adequate verification.
+
+        Share the minimum sanitized evidence required to reconstruct the failure. Never post credentials, private prompts, personal data, wallet information, or confidential source code.
+
+  - type: checkboxes
+    id: report_checks
+    attributes:
+      label: Report checks
+      options:
+        - label: "I reproduced this behavior or preserved enough run evidence to analyze it."
+          required: true
+        - label: "I removed secrets, personal information, private paths, and unrelated reasoning/output."
+          required: true
+        - label: "I understand that submitting an issue does not authorize a code or documentation contribution."
+          required: true
+
+  - type: dropdown
+    id: failure_class
+    attributes:
+      label: Failure class
+      options:
+        - False success or unsupported completion claim
+        - Test passed without exercising a required feature
+        - Runtime path failed after self-test passed
+        - Assertion was weakened or made meaningless
+        - Tool call was malformed, ignored, or fabricated
+        - Repair loop repeated without useful progress
+        - Verification evidence was misclassified
+        - Episode memory or reflection was misleading
+        - Context, streaming, or timeout failure
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: machine_version
+    attributes:
+      label: What-If Machine version or commit
+      placeholder: "Displayed version and commit SHA"
+    validations:
+      required: true
+
+  - type: input
+    id: model_tag
+    attributes:
+      label: Exact model tag
+      placeholder: "Example: ornith-1.5:35b"
+    validations:
+      required: true
+
+  - type: input
+    id: runtime
+    attributes:
+      label: Ollama version and platform
+      placeholder: "Example: Ollama 0.x.x on Windows 11"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: agent_mode
+    attributes:
+      label: Agent mode
+      options:
+        - Build
+        - Plan
+    validations:
+      required: true
+
+  - type: input
+    id: generation_settings
+    attributes:
+      label: Generation settings
+      description: Include the temperature and seed recorded for the run.
+      placeholder: "temperature=0.6, seed=123456"
+    validations:
+      required: true
+
+  - type: textarea
+    id: task
+    attributes:
+      label: Sanitized task
+      description: Provide the smallest task statement that still reproduces the behavior.
+      placeholder: "The minimal task given to the agent."
+    validations:
+      required: true
+
+  - type: textarea
+    id: workspace
+    attributes:
+      label: Minimal workspace description
+      description: Describe the relevant starting files, dependencies, and state without sharing private material.
+      placeholder: "Files present, important versions, and clean/dirty state."
+    validations:
+      required: true
+
+  - type: textarea
+    id: trajectory
+    attributes:
+      label: Relevant tool trajectory
+      description: Summarize the smallest sequence of tool calls and results that demonstrates the failure.
+      placeholder: |
+        1. file_write created...
+        2. bash returned...
+        3. final response claimed...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected_evidence
+    attributes:
+      label: Evidence that should have been required
+      description: Explain which runtime, test, coverage, assertion, mutation, or completion evidence was missing or misread.
+    validations:
+      required: true
+
+  - type: textarea
+    id: redacted_log
+    attributes:
+      label: Redacted run-log excerpt
+      description: Include only the lines necessary to support the report.
+      render: text
+
+  - type: textarea
+    id: impact
+    attributes:
+      label: Result and impact
+      description: State what was delivered, what was actually broken, and how you confirmed the difference.
+    validations:
+      required: true
+

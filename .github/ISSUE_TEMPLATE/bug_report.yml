@@ -1,0 +1,145 @@
+name: "🐛 Bug report"
+description: "Report a reproducible defect in the runtime, CLI, tools, memory, logging, or verification flow."
+title: "[Bug]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Thank you for helping improve What-If Machine
+
+        Provide the smallest reproducible case you can. Remove credentials, private prompts, personal information, and unrelated log content before submitting.
+
+        > **Ownership notice:** This issue reports a problem; it does not grant permission to use, modify, redistribute, or contribute proprietary project material.
+
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Preflight checks
+      description: Confirm each item before submitting.
+      options:
+        - label: "I searched existing issues and did not find the same report."
+          required: true
+        - label: "I removed secrets, personal data, private paths, and unrelated model output."
+          required: true
+        - label: "I can provide reproducible evidence rather than only a conclusion."
+          required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Affected area
+      description: Select the closest match.
+      options:
+        - CLI or terminal interface
+        - Ollama connection or streaming
+        - Build agent
+        - Plan agent
+        - File tools or path validation
+        - Bash tool or command policy
+        - Verification or completion ledger
+        - Episode memory or embeddings
+        - Logging or diagnostics
+        - Documentation
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: What-If Machine version or commit
+      description: Provide the displayed version and, when possible, the commit SHA.
+      placeholder: "Example: V180 / 72938ce"
+    validations:
+      required: true
+
+  - type: input
+    id: model
+    attributes:
+      label: Ollama model tag
+      description: Enter the exact tag used for the affected run.
+      placeholder: "Example: ornith-1.5:35b"
+    validations:
+      required: true
+
+  - type: input
+    id: ollama_version
+    attributes:
+      label: Ollama version
+      placeholder: "Example: 0.x.x"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: operating_system
+    attributes:
+      label: Operating system
+      options:
+        - Windows 11
+        - Windows 10
+        - Linux
+        - macOS
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: command
+    attributes:
+      label: Command and relevant settings
+      description: Include the sanitized command, agent mode, temperature, seed, endpoint type, and other settings that affect reproduction.
+      placeholder: "python what_if_machine.py --agent build --model ... --dir ..."
+      render: shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem summary
+      description: Describe what failed and why it appears to be a product defect.
+      placeholder: "A concise description of the observed problem."
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal reproduction steps
+      description: Start from a clean workspace when possible and number each step.
+      placeholder: |
+        1. Create...
+        2. Run...
+        3. Observe...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      placeholder: "What should have happened?"
+    validations:
+      required: true
+
+  - type: textarea
+    id: observed
+    attributes:
+      label: Observed behavior
+      placeholder: "What actually happened? Include exact error text when safe."
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Redacted evidence
+      description: Paste only the relevant log excerpt, traceback, command result, or verification output. Do not upload an entire private workspace.
+      render: text
+
+  - type: textarea
+    id: additional_context
+    attributes:
+      label: Additional context
+      description: Add anything else that materially helps reproduce or classify the defect.
+

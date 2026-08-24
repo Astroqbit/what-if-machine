@@ -1,0 +1,9 @@
+blank_issues_enabled: false
+contact_links:
+  - name: "🔐 Security policy"
+    url: "https://github.com/Astroqbit/what-if-machine/blob/main/SECURITY.md"
+    about: "Review safe-reporting guidance before disclosing security-sensitive information."
+  - name: "©️ Licensing and permissions"
+    url: "https://github.com/Astroqbit/what-if-machine/blob/main/LICENSE"
+    about: "Review the proprietary license before requesting reuse or commercial permission."
+
