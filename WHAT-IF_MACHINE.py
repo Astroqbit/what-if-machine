@@ -2031,7 +2031,7 @@ SYNTAX_EXT = {".py", ".js", ".mjs", ".html", ".htm", ".json"}
 VERIFIABLE_EXT = (".py", ".js", ".mjs", ".html", ".htm", ".css",
                   ".json", ".ts", ".tsx", ".jsx")
 _INLINE_SCRIPT_RE = re.compile(
-    r"<script([^>]*)>(.*?)</script>", re.S | re.I)
+    r"<script(?=[\t\n\f\r />])([^>]*)>(.*?)</script(?=[\t\n\f\r />])[^>]*>", re.S | re.I)
 _NON_JS_TYPE_RE = re.compile(
     r"""type\s*=\s*['"]([^'"]+)['"]""", re.I)
 _NODE_OK = None  # tri-state cache: None = unprobed
