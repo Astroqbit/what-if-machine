@@ -13,6 +13,7 @@
   [![Ollama](https://img.shields.io/badge/Runtime-Ollama-111111?logo=ollama&logoColor=white)](https://ollama.com/)
   [![Bandit](https://github.com/Astroqbit/what-if-machine/actions/workflows/bandit.yml/badge.svg)](https://github.com/Astroqbit/what-if-machine/actions/workflows/bandit.yml)
   ![Status](https://img.shields.io/badge/status-experimental-00b894)
+  [![License](https://img.shields.io/badge/license-proprietary-2d3436)](LICENSE)
 
   <br>
 
@@ -90,10 +91,10 @@ python -m pip install -r requirements.txt
 
 ### 3. Pull a model
 
-The preferred public Ornith model is:
+The preferred public Ornith 1.5 model is:
 
 ```powershell
-ollama pull ornith:35b
+ollama pull ornith-1.5:35b
 ```
 
 ### 4. Run the machine
@@ -101,19 +102,20 @@ ollama pull ornith:35b
 Interactive Build mode:
 
 ```powershell
-python what_if_machine.py --model ornith:35b --dir C:\work\mission
+New-Item -ItemType Directory -Force C:\work\mission | Out-Null
+python what_if_machine.py --model ornith-1.5:35b --dir C:\work\mission
 ```
 
 Single-prompt mode:
 
 ```powershell
-python what_if_machine.py --model ornith:35b --dir C:\work\mission "Build a small Python utility and verify it."
+python what_if_machine.py --model ornith-1.5:35b --dir C:\work\mission "Build a small Python utility and verify it."
 ```
 
 Read-only planning:
 
 ```powershell
-python what_if_machine.py --agent plan --model ornith:35b --dir C:\work\mission
+python what_if_machine.py --agent plan --model ornith-1.5:35b --dir C:\work\mission
 ```
 
 <details>
@@ -161,7 +163,8 @@ The runtime communicates with Ollama's `/api/chat` endpoint and supplies structu
 
 | Family | Example Ollama tags | Position |
 |---|---|---|
-| **Ornith 1.5** | `ornith:35b`, `ornith:9b` | Preferred family |
+| **Ornith 1.5** | `ornith-1.5:35b`, `ornith-1.5:9b` | Preferred family |
+| **Ornith 1.0** | `ornith:35b`, `ornith:9b` | Compatible earlier release |
 | **Qwen3.5** | `qwen3.5:9b`, `qwen3.5:27b`, `qwen3.5:35b` | Compatible candidate |
 | **Qwen3.6** | `qwen3.6:27b`, `qwen3.6:35b` | Compatible candidate |
 | **Qwen3.8** | `qwen3.8:27b` | Compatible candidate |
@@ -226,13 +229,20 @@ Read the full [Security Policy](SECURITY.md).
 
 ## Contributing
 
-Bug reports, reproducible failure cases, documentation fixes, and focused pull requests are welcome. When reporting a model-driven issue, include the model tag, Ollama version, command, relevant run-log excerpt, and the smallest workspace that reproduces the behavior.
+Bug reports and reproducible failure cases are welcome. When reporting a model-driven issue, include the model tag, Ollama version, command, relevant run-log excerpt, and the smallest workspace that reproduces the behavior.
+
+Because this is proprietary software, do not submit code or documentation changes unless Matthew Newland has approved the contribution in writing. See [Contributing](CONTRIBUTING.md) for the ownership policy.
 
 [Open an issue](https://github.com/Astroqbit/what-if-machine/issues/new) · [View the source](what_if_machine.py)
+
+## License
+
+Copyright © 2026 Matthew Newland. All rights reserved.
+
+What-If Machine is **proprietary, source-available software**, not open-source software. No permission is granted to use, copy, modify, distribute, sublicense, sell, host, or create derivative works except under a separate written agreement from the copyright owner. See the [Proprietary License](LICENSE).
 
 ## Author
 
 **Matthew Newland** · Technical Research · AI Systems · Verification · QA · Python
 
 If this project is useful, consider [starring the repository](https://github.com/Astroqbit/what-if-machine) so others can find it.
-
