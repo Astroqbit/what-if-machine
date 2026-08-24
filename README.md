@@ -1,206 +1,238 @@
-# What-If Machine
+<div align="center">
 
-### IMPORTANT: "WORK IN PROGRESS" 
+  <img src="assets/icon.svg" width="128" alt="What-If Machine glowing portal icon">
 
-KNOWN ISSUES
-- version Mismatched
-- old info
-- missing documents
-- color Mismatched
-- screen size issues
-- misspelled names
-- missing features
-- broken pipelines
-- timeouts
-- MISSING DEPENDENCIES
+  # What-If Machine
 
-**Local AI engineering and verification agent for Ollama**
+  **Local AI engineering that treats evidence—not confidence—as completion.**
 
-What-If Machine is a Windows-first local AI system that turns complex technical requirements into working software, tools, workflows, and specialized agents through an iterative **build → test → diagnose → repair → verify** loop.
+  A Windows-first Ollama agent that can plan, build, test, diagnose, repair, and verify software inside a controlled workspace.
 
-The project is built around one principle: **a generated answer is not the same thing as a verified result.**
+  [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+  [![Windows 11](https://img.shields.io/badge/Primary_platform-Windows_11-0078D4?logo=windows11&logoColor=white)](https://www.microsoft.com/windows/windows-11)
+  [![Ollama](https://img.shields.io/badge/Runtime-Ollama-111111?logo=ollama&logoColor=white)](https://ollama.com/)
+  [![Bandit](https://github.com/Astroqbit/what-if-machine/actions/workflows/bandit.yml/badge.svg)](https://github.com/Astroqbit/what-if-machine/actions/workflows/bandit.yml)
+  ![Status](https://img.shields.io/badge/status-experimental-00b894)
 
-## What makes it different
+  <br>
 
-A normal coding chat can stop when the output *looks* finished. What-If Machine gives a local model structured tools, records what actually happened, reacts to failed verification, and can continue iterating when the evidence does not support completion.
+  <img src="assets/readme-workflow.gif" width="100%" alt="Animated What-If Machine build, test, diagnose, repair, and verify workflow">
 
-The system has also been used as an experimental platform for studying AI-assisted engineering failure modes: false-success signals, tests that pass without exercising real behavior, repeated edits, misleading diagnostics, incomplete execution, and verification that measures the wrong thing.
+  [Quick start](#quick-start) · [How it works](#how-it-works) · [Verification](#verification-stack) · [Models](#model-compatibility) · [Documentation](#documentation) · [Security](SECURITY.md)
 
-## Core capabilities
+</div>
 
-- **General-purpose build workflow** — creates and modifies software, utilities, workflows, and task-specific agents rather than being tied to one application.
-- **Build and Plan modes** — Build can modify and execute work; Plan is read-only for inspection and implementation planning.
-- **Structured file operations** — read, create, replace, list, and search inside a bounded working directory.
-- **Controlled command execution** — allowlisted developer commands, timeouts, path checks, and blocking for several destructive-command patterns.
-- **Iterative failure recovery** — failed tool calls and verification results become evidence for the next iteration instead of silently becoming completion.
-- **Evidence-oriented verification** — runtime checks, self-test guidance, entry-point smoke checks, coverage analysis, assertion-quality checks, completion-evidence checks, and mutation-testing infrastructure.
-- **Persistent episode memory** — stores task outcomes, root causes, fixes, verification evidence, generation settings, and optional semantic embeddings.
-- **Reproducibility controls** — records seeds, model information, temperature, token use, and Ollama version for later comparison.
-- **Local-first operation** — uses an Ollama endpoint rather than requiring a hosted AI API.
+> [!NOTE]
+> **Experimental portfolio release.** The runtime is under active development and full behavior depends on the selected model, local environment, dependencies, and task. It is an engineering tool—not a hardened security sandbox.
 
-> **V180 configuration note:** mutation-testing infrastructure is present, but `MUTATION_MAX_FIRES = 0` disables mutation-gate firings by default.
+## Why it exists
 
-## Architecture
+Most coding agents can stop when an answer *looks* complete. What-If Machine is designed around a stricter question:
 
-```text
-Requirement
-   │
-   ▼
-Build / Plan Agent
-   │
-   ├── file_read
-   ├── file_write
-   ├── str_replace
-   ├── list_dir
-   ├── grep_search
-   └── bash
-   │
-   ▼
-Tool results + evidence
-   │
-   ▼
-Verification / failure analysis
-   │
-   ├── syntax & runtime checks
-   ├── self-test / coverage checks
-   ├── entry-point smoke checks
-   ├── assertion-quality checks
-   └── optional mutation checks
-   │
-   ▼
-Iterate or report result
-   │
-   ▼
-Episode memory + run log
+> **What evidence shows that the result actually works?**
+
+The agent gives a local model structured tools, records what really happened, challenges weak success signals, and feeds failures back into the next iteration. The result is a repeatable **build → test → diagnose → repair → verify** loop instead of a one-shot code response.
+
+## Highlights
+
+| | Capability | | Capability |
+|---|---|---|---|
+| 🛠️ | **Build mode** modifies files and executes bounded developer commands. | 🔎 | **Plan mode** inspects projects without changing them. |
+| ✅ | **Evidence-oriented verification** checks syntax, runtime behavior, coverage, assertions, and completion claims. | 🔁 | **Failure recovery** turns failed tools and tests into actionable evidence for the next pass. |
+| 🧠 | **Episode memory** preserves outcomes, root causes, fixes, settings, and optional embeddings. | 🎲 | **Reproducible runs** record model, seed, temperature, token use, and Ollama version. |
+| 🖥️ | **Live terminal dashboard** shows status, context use, tool history, memory, and Matrix-style activity. | 🔒 | **Workspace boundaries** add path validation, command allowlisting, timeouts, and destructive-pattern blocking. |
+| 🏠 | **Local-first operation** uses an Ollama endpoint instead of requiring a hosted AI API. | 📋 | **Detailed run logs** preserve evidence that may be condensed in the live terminal. |
+
+## How it works
+
+```mermaid
+flowchart TD
+    R[Technical requirement] --> A{Agent mode}
+    A -->|Build| B[Inspect and modify]
+    A -->|Plan| P[Read-only analysis]
+    B --> T[Run tools and tests]
+    P --> E[Produce implementation plan]
+    T --> V{Evidence supports completion?}
+    V -->|No| D[Diagnose and repair]
+    D --> T
+    V -->|Yes| M[Record episode and report]
 ```
 
-More detail: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) and [`docs/VERIFICATION.md`](docs/VERIFICATION.md).
+### Built-in tools
 
-## Preferred and compatible models
+| Tool | Purpose | Build | Plan |
+|---|---|:---:|:---:|
+| `file_read` | Read a bounded section of a file | ✓ | ✓ |
+| `list_dir` | Inspect workspace structure | ✓ | ✓ |
+| `grep_search` | Search project text | ✓ | ✓ |
+| `file_write` | Create a new file | ✓ | — |
+| `str_replace` | Make a targeted edit | ✓ | — |
+| `bash` | Run allowlisted developer commands | ✓ | — |
 
-The author's preferred model family is **Ornith 1.5**, with the **35B model preferred** and 9B as the lighter option. The development source uses the local tag `ornith-1.5:35b` by default.
-
-For a standard Ollama library install, the public Ornith tags are:
-
-```powershell
-ollama run ornith:35b
-ollama run ornith:9b
-```
-
-Other Ollama model families with native tool support are reasonable compatibility candidates, including **Qwen3.5, Qwen3.6, Qwen3.8, and Gemma 4**. Model behavior varies, so compatibility should mean *the interface is suitable*, not that every model/quantization has been benchmarked with this runtime.
-
-See [`docs/MODELS.md`](docs/MODELS.md) for the compatibility notes and context-window guidance.
-
-## Requirements
-
-- Windows 11 is the primary development target.
-- Python 3.10+ recommended.
-- Ollama running locally or at a reachable URL.
-- An Ollama chat model with tool/function-calling support.
-- Python packages:
-  - `httpx`
-  - `rich` (recommended; the runtime has a plain-terminal fallback)
-- Optional semantic-memory model:
-  - `nomic-embed-text`
-
-Install dependencies:
-
-```powershell
-python -m pip install -r requirements.txt
-```
+Read the deeper design notes in [Architecture](docs/ARCHITECTURE.md).
 
 ## Quick start
 
-Start Ollama and pull a model. For the preferred public Ornith tag:
+### 1. Install the prerequisites
+
+- Windows 11 (primary development target)
+- [Python 3.10+](https://www.python.org/downloads/)
+- [Ollama](https://ollama.com/download)
+- An Ollama model with reliable tool/function calling
+
+### 2. Clone and install
+
+```powershell
+git clone https://github.com/Astroqbit/what-if-machine.git
+cd what-if-machine
+python -m pip install -r requirements.txt
+```
+
+### 3. Pull a model
+
+The preferred public Ornith model is:
 
 ```powershell
 ollama pull ornith:35b
 ```
 
-Run What-If Machine in a dedicated workspace:
+### 4. Run the machine
+
+Interactive Build mode:
 
 ```powershell
-python what_if_machine.py --model ornith:35b
-```
-
-If your local model is tagged `ornith-1.5:35b`, the source default can be used directly:
-
-```powershell
-python what_if_machine.py
+python what_if_machine.py --model ornith:35b --dir C:\work\mission
 ```
 
 Single-prompt mode:
 
 ```powershell
-python what_if_machine.py --model ornith:35b "Build a small Python utility and verify it."
+python what_if_machine.py --model ornith:35b --dir C:\work\mission "Build a small Python utility and verify it."
 ```
 
-Useful options:
+Read-only planning:
 
-```text
---agent build|plan
---model MODEL
---url OLLAMA_URL
---dir WORKING_DIRECTORY
---temp TEMPERATURE
---seed SEED
---verbose
---log FILE
---no-log
+```powershell
+python what_if_machine.py --agent plan --model ornith:35b --dir C:\work\mission
 ```
 
-`--ctx` defaults to 256000. Lower it for models whose native context window is smaller or when VRAM/RAM use matters.
+<details>
+<summary><strong>CLI options</strong></summary>
+
+| Option | Description |
+|---|---|
+| `prompt` | Optional prompt for non-interactive execution |
+| `--model`, `-m` | Ollama model tag |
+| `--agent`, `-a` | `build` or `plan` |
+| `--url`, `-u` | Ollama endpoint |
+| `--dir`, `-d` | Bounded working directory |
+| `--temp`, `-t` | Builder temperature; default `0.6` |
+| `--seed` | Reuse a recorded builder seed for a closer replay |
+| `--verbose`, `-v` | Show additional diagnostic output |
+| `--log FILE` | Write the uncapped run log to a chosen file |
+| `--no-log` | Disable run logging |
+
+</details>
+
+## Verification stack
+
+What-If Machine separates checks that are often incorrectly treated as equivalent:
+
+| Layer | Question it answers |
+|---|---|
+| **Parse** | Is the file syntactically valid? |
+| **Runtime** | Does the real entry point start? |
+| **Self-test** | Does an explicit verification path pass? |
+| **Coverage** | Did the relevant code and assertions execute? |
+| **Assertion quality** | Is the test meaningful rather than decorative? |
+| **Mutation** | Would selected incorrect behavior be detected? |
+| **Completion ledger** | Do final claims agree with recorded execution evidence? |
+
+No single green signal proves everything. The runtime combines multiple imperfect measurements and keeps their evidence distinct.
+
+> [!IMPORTANT]
+> Mutation-testing infrastructure is present, but mutation-gate firings are disabled by default in the current V180 source with `MUTATION_MAX_FIRES = 0`.
+
+See [Verification Design](docs/VERIFICATION.md) and the measured [Engineering Case Studies](docs/ENGINEERING_CASE_STUDIES.md).
+
+## Model compatibility
+
+The runtime communicates with Ollama's `/api/chat` endpoint and supplies structured tool definitions. A suitable model must reliably follow tool schemas across long, iterative sessions.
+
+| Family | Example Ollama tags | Position |
+|---|---|---|
+| **Ornith 1.5** | `ornith:35b`, `ornith:9b` | Preferred family |
+| **Qwen3.5** | `qwen3.5:9b`, `qwen3.5:27b`, `qwen3.5:35b` | Compatible candidate |
+| **Qwen3.6** | `qwen3.6:27b`, `qwen3.6:35b` | Compatible candidate |
+| **Qwen3.8** | `qwen3.8:27b` | Compatible candidate |
+| **Gemma 4** | `gemma4:12b`, `gemma4:26b`, `gemma4:31b` | Compatible candidate |
+
+These are interface-compatible candidates, not a claim that every model and quantization has been benchmarked end to end. See [Model Compatibility](docs/MODELS.md).
 
 ## Persistent data
 
-What-If Machine may create:
+| Path | Contents |
+|---|---|
+| `episodes.jsonl` | Tasks, outcomes, lessons, root causes, evidence, model settings, and optional embeddings |
+| `whatif_logs/` | Uncapped run logs stored beside the runtime by default |
+| Mission workspace | Files and other artifacts produced during a build |
 
-- `episodes.jsonl` in the working directory
-- `whatif_logs/` beside the runtime
-- normal project artifacts and Python caches in mission workspaces
-
-`episodes.jsonl` and run logs may contain prompts, task history, file names, tool evidence, errors, and model output. They are excluded by the supplied `.gitignore`.
+Prompts, paths, model output, and tool evidence may appear in the episode store and logs. Both supplied runtime-data paths are excluded by `.gitignore`; still review them before sharing a workspace.
 
 ## Safety
 
-The project contains engineering guardrails, **not a hardened security sandbox**.
+The project contains engineering guardrails, not an operating-system security boundary. Commands and generated programs inherit the permissions of the account running What-If Machine.
 
-The runtime intentionally allows interpreters, package managers, compilers, Git, and test runners. Programs executed through those tools inherit the operating-system permissions of the account running What-If Machine.
-
-Recommended use:
-
-1. Run in a dedicated workspace.
+1. Run each mission in a dedicated workspace.
 2. Keep credentials and private files outside that workspace.
 3. Use version control or backups for important projects.
-4. Use a disposable VM/container for untrusted code, packages, prompts, or models.
+4. Use a disposable VM or container for untrusted code, packages, prompts, or models.
 5. Review dependency-install commands in sensitive environments.
 
-See [`SECURITY.md`](SECURITY.md).
-
-## Verification philosophy
-
-The project deliberately separates questions that are often collapsed into one:
-
-- Did the file parse?
-- Did the program actually start?
-- Did the test execute the relevant behavior?
-- Would the test notice if the behavior were wrong?
-- Did a command actually run, or was it refused before execution?
-- Does the final claim match the evidence produced during the run?
-
-That distinction is the main engineering focus of the project.
-
-## Engineering case studies
-
-The development history contains measured examples of verification failures and the changes made in response. A concise portfolio-oriented selection is preserved in [`docs/ENGINEERING_CASE_STUDIES.md`](docs/ENGINEERING_CASE_STUDIES.md).
+Read the full [Security Policy](SECURITY.md).
 
 ## Project status
 
-**experimental portfolio release**
+| | Current state |
+|---|---|
+| Maturity | Experimental portfolio release |
+| Primary platform | Windows 11 |
+| Interface | Python CLI with a Rich live dashboard and plain-terminal fallback |
+| Runtime | Local or reachable Ollama endpoint |
+| Verification | Multi-layer checks; task- and environment-dependent |
 
-This repository focuses on the runtime itself. The cleaned public source compiles and its CLI smoke path is checked automatically in GitHub Actions. Full model-driven behavior depends on the selected Ollama model, local environment, task, dependencies, and generated artifacts.
+<details>
+<summary><strong>Known limitations and active cleanup</strong></summary>
+
+- Some displayed version labels and documentation are not yet synchronized with the V180 source header.
+- Theme colors, terminal sizing, and border behavior may vary with terminal configuration.
+- Some documented or planned features may not yet be wired through every execution path.
+- Long model sessions can time out, and dependencies vary by generated project.
+- Model behavior is not uniform even when the Ollama interface reports tool support.
+- Full model-driven verification depends on the task, generated artifact, local dependencies, and available hardware.
+
+</details>
+
+## Documentation
+
+| Document | What it covers |
+|---|---|
+| [Architecture](docs/ARCHITECTURE.md) | Runtime components, tools, memory, logging, and data flow |
+| [Verification Design](docs/VERIFICATION.md) | Verification layers and their limits |
+| [Engineering Case Studies](docs/ENGINEERING_CASE_STUDIES.md) | Observed failure modes and measured repairs |
+| [Model Compatibility](docs/MODELS.md) | Model families, Ollama tags, endpoints, and reproducibility |
+| [GitHub Setup](docs/GITHUB_SETUP.md) | Repository setup notes |
+| [Security Policy](SECURITY.md) | Threat model and safe-use guidance |
+
+## Contributing
+
+Bug reports, reproducible failure cases, documentation fixes, and focused pull requests are welcome. When reporting a model-driven issue, include the model tag, Ollama version, command, relevant run-log excerpt, and the smallest workspace that reproduces the behavior.
+
+[Open an issue](https://github.com/Astroqbit/what-if-machine/issues/new) · [View the source](what_if_machine.py)
 
 ## Author
 
-Matthew Newland  
-Technical Research • AI Systems • Verification • QA • Python
+**Matthew Newland** · Technical Research · AI Systems · Verification · QA · Python
+
+If this project is useful, consider [starring the repository](https://github.com/Astroqbit/what-if-machine) so others can find it.
+
