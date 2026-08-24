@@ -101,19 +101,13 @@ ollama pull ornith:35b
 Interactive Build mode:
 
 ```powershell
-python what_if_machine.py --model ornith:35b --dir C:\work\mission
+python what_if_machine.py --model ornith:35b
 ```
 
 Single-prompt mode:
 
 ```powershell
-python what_if_machine.py --model ornith:35b --dir C:\work\mission "Build a small Python utility and verify it."
-```
-
-Read-only planning:
-
-```powershell
-python what_if_machine.py --agent plan --model ornith:35b --dir C:\work\mission
+python what_if_machine.py --model ornith:35b "Build a small Python utility and verify it."
 ```
 
 <details>
@@ -161,7 +155,7 @@ The runtime communicates with Ollama's `/api/chat` endpoint and supplies structu
 
 | Family | Example Ollama tags | Position |
 |---|---|---|
-| **Ornith 1.5** | `ornith:35b`, `ornith:9b` | Preferred family |
+| **Ornith** | `ornith:35b`, `ornith:9b`, `ornith-1.5:35b` | Preferred family |
 | **Qwen3.5** | `qwen3.5:9b`, `qwen3.5:27b`, `qwen3.5:35b` | Compatible candidate |
 | **Qwen3.6** | `qwen3.6:27b`, `qwen3.6:35b` | Compatible candidate |
 | **Qwen3.8** | `qwen3.8:27b` | Compatible candidate |
