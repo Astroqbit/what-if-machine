@@ -120,13 +120,13 @@ ollama pull ornith:35b
 Run What-If Machine in a dedicated workspace:
 
 ```powershell
-python what_if_machine.py --model ornith:35b --dir C:\path\to\workspace
+python what_if_machine.py --model ornith:35b
 ```
 
 If your local model is tagged `ornith-1.5:35b`, the source default can be used directly:
 
 ```powershell
-python what_if_machine.py --dir C:\path\to\workspace
+python what_if_machine.py
 ```
 
 Single-prompt mode:
@@ -143,7 +143,6 @@ Useful options:
 --url OLLAMA_URL
 --dir WORKING_DIRECTORY
 --temp TEMPERATURE
---ctx TOKENS
 --seed SEED
 --verbose
 --log FILE
