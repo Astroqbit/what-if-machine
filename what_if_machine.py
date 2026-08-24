@@ -7904,7 +7904,7 @@ class OllamaClient:
     STREAM_NOVELTY_MIN = 0.25       # below this the window said nothing new
     STREAM_NOVELTY_STREAK = 6       # consecutive low windows before cancelling
 
-    def __init__(self, base_url: str = "http://localhost:11434", model: str = "ornith-1.5:35b", options: dict = None):
+    def __init__(self, base_url: str = "http://localhost:11434", model: str = "ornith:35b", options: dict = None):
         self.base_url = base_url.rstrip("/")
         self.model = model
         self.options = options or {"num_ctx": 256000, "temperature": 0.6} # Default = 32768
@@ -12347,7 +12347,7 @@ BANNER = """
 [bold bright_green]║[/]  [bold bright_white]╚███╔███╔╝[/][bold green]██║  ██║[/][bold bright_cyan]██║  ██║[/][bold cyan]   ██║[/]       [bold bright_magenta]██║[/][bold magenta]██║[/]                   [bold bright_green]║[/]
 [bold bright_green]║[/]   [bold bright_white]╚══╝╚══╝ [/][bold green]╚═╝  ╚═╝[/][bold bright_cyan]╚═╝  ╚═╝[/][bold cyan]   ╚═╝[/]       [bold bright_magenta]╚═╝[/][bold magenta]╚═╝[/]                   [bold bright_green]║[/]
 [bold bright_green]║[/]                                                                              [bold bright_green]║[/]
-[bold bright_green]║[/]              [bold bright_cyan]▀▄▀▄▀▄[/] [bold bright_white]M A C H I N E[/] [bold bright_cyan]▄▀▄▀▄▀[/]   [bold yellow]v30.0[/]                    [bold bright_green]║[/]
+[bold bright_green]║[/]              [bold bright_cyan]▀▄▀▄▀▄[/] [bold bright_white]M A C H I N E[/] [bold bright_cyan]▄▀▄▀▄▀[/]   [bold yellow][/]                    [bold bright_green]║[/]
 [bold bright_green]║[/]                                                                              [bold bright_green]║[/]
 [bold bright_green]║[/]   [bright_cyan]◈[/] [dim]Nested Learning[/] [bright_green]◈[/] [dim]Recursive Self-Correction[/] [bright_yellow]◈[/] [dim]T=0.6[/] [bright_magenta]◈[/]          [bold bright_green]║[/]
 [bold bright_green]║[/]                                                                              [bold bright_green]║[/]
@@ -12482,7 +12482,7 @@ class CLI:
                 "║  ██║███╗██║██╔══██║██╔══██║   ██║ ╚════╝██║██╔══╝                    ║",
                 "║  ╚███╔███╔╝██║  ██║██║  ██║   ██║       ██║██║                       ║",
                 "║   ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝       ╚═╝╚═╝                       ║",
-                "║              M A C H I N E   v30.0                                   ║",
+                "║              M A C H I N E                                           ║",
                 "║                                                                         ║",
                 "║    ◈ Nested Learning Agent ◈ Recursive Self-Correction ◈ T=0.6 ◈       ║",
                 "╚═════════════════════════════════════════════════════════════════════════╝",
@@ -12836,7 +12836,7 @@ class CLI:
             else:
                 self.print(f"Current model: {self.model}")
                 self.print("Usage: /model <model_name>")
-                self.print("Recommended: qwen3:14b, ornith:35b, devstral:latest, gemma4:12b")
+                self.print("Recommended: ornith:35b")
         elif c == "/agent":
             if args and args[0].lower() in ["build", "plan"]:
                 self.agent_type = args[0].lower()
@@ -13482,9 +13482,9 @@ class CLI:
 
 
 async def main():
-    parser = argparse.ArgumentParser(description="What-if Machine v30.0 - Nested Learning Agent, Evidence-Tuned")
+    parser = argparse.ArgumentParser(description="What-if Machine - Nested Learning Agent, Evidence-Tuned")
     parser.add_argument("prompt", nargs="?", help="Single prompt (non-interactive)")
-    parser.add_argument("--model", "-m", default="ornith-1.5:35b", help="Ollama model")
+    parser.add_argument("--model", "-m", default="ornith:35b", help="Ollama model")
     parser.add_argument("--agent", "-a", choices=["build", "plan"], default="build", help="Agent type")
     parser.add_argument("--url", "-u", default="http://localhost:11434", help="Ollama URL")
     parser.add_argument("--dir", "-d", default=None, help="Working directory")
