@@ -4,19 +4,19 @@ What-If Machine communicates with Ollama's `/api/chat` endpoint and supplies str
 
 ## Preferred model
 
-### Ornith 1.5 — preferred
+### Ornith — preferred
 
-The author's preferred family is Ornith 1.5, especially the 35B model. The development runtime currently defaults to:
+The author's preferred family is Ornith, especially the 35B model. The development runtime currently defaults to:
 
 ```text
-ornith-1.5:35b
+ornith:35b
 ```
 
-The official Ollama library exposes Ornith 1.5 under these tags:
+The official Ollama library exposes Ornith under these tags:
 
 ```powershell
-ollama run ornith-1.5:35b
-ollama run ornith-1.5:9b
+ollama run ornith:35b
+ollama run ornith:9b
 ```
 
 The earlier Ornith 1.0 release remains available as `ornith:35b` and `ornith:9b`.
@@ -29,12 +29,8 @@ As of August 2026, Ollama marks the following public families as tools-capable:
 
 | Family | Public Ollama examples | Notes |
 |---|---|---|
-| Ornith 1.5 | `ornith-1.5:35b`, `ornith-1.5:9b` | Preferred family |
+| Ornith 1.5 | `ornith-1.5:35b`, `ornith-1.5:9b` | work-in-progress family |
 | Ornith 1.0 | `ornith:35b`, `ornith:9b` | Compatible earlier release |
-| Qwen3.5 | `qwen3.5:9b`, `qwen3.5:27b`, `qwen3.5:35b` | Tools + thinking; 256K variants available |
-| Qwen3.6 | `qwen3.6:27b`, `qwen3.6:35b` | Tools + thinking; designed for agentic coding |
-| Qwen3.8 | `qwen3.8:27b` | Tools + thinking; long-horizon agentic focus |
-| Gemma 4 | `gemma4:12b`, `gemma4:26b`, `gemma4:31b` | Native function calling; larger variants provide 256K context |
 
 These are **interface-compatible candidates**, not a claim that every quantization has been tested end to end with What-If Machine.
 
