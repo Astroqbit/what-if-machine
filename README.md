@@ -1,5 +1,19 @@
 # What-If Machine
 
+### IMPORTANT: "WORK IN PROGRESS" 
+
+KNOWN ISSUES
+- version Mismatched
+- old info
+- missing documents
+- color Mismatched
+- screen size issues
+- misspelled names
+- missing features
+- broken pipelines
+- timeouts
+- MISSING DEPENDENCIES
+
 **Local AI engineering and verification agent for Ollama**
 
 What-If Machine is a Windows-first local AI system that turns complex technical requirements into working software, tools, workflows, and specialized agents through an iterative **build → test → diagnose → repair → verify** loop.
@@ -183,7 +197,7 @@ The development history contains measured examples of verification failures and 
 
 ## Project status
 
-**V180 — experimental portfolio release**
+**experimental portfolio release**
 
 This repository focuses on the runtime itself. The cleaned public source compiles and its CLI smoke path is checked automatically in GitHub Actions. Full model-driven behavior depends on the selected Ollama model, local environment, task, dependencies, and generated artifacts.
 
