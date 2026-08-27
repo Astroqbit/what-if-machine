@@ -6,7 +6,7 @@
 
   **Local AI engineering that treats evidence—not confidence—as completion.**
 
-  A Windows-first Ollama agent that can plan, build, test, diagnose, repair, and verify software inside a controlled workspace.
+  A Windows-first, evidence-carrying constructive reasoning system for Ollama that can plan, create, execute, observe, diagnose, repair, verify, and iteratively refine computational solutions inside a controlled workspace.
 
   [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
   [![Windows 11](https://img.shields.io/badge/Primary_platform-Windows_11-0078D4?logo=windows11&logoColor=white)](https://www.microsoft.com/windows/windows-11)
@@ -17,7 +17,7 @@
 
   <br>
 
-  <img src="assets/readme-workflow.gif" width="100%" alt="Animated What-If Machine build, test, diagnose, repair, and verify workflow">
+  <img src="assets/readme-workflow.gif" width="100%" alt="Animated V180 task lifecycle showing pre-loop episode recall, the iterative agent/tool/evidence loop, conditional completion checks, mechanical outcome correction, reflection, and episode saving">
 
   [Quick start](#quick-start) · [How it works](#how-it-works) · [Verification](#verification-stack) · [Models](#model-compatibility) · [Documentation](#documentation) · [Security](SECURITY.md)
 
@@ -32,13 +32,15 @@ Most coding agents can stop when an answer *looks* complete. What-If Machine is 
 
 > **What evidence shows that the result actually works?**
 
-The agent gives a local model structured tools, records what really happened, challenges weak success signals, and feeds failures back into the next iteration. The result is a repeatable **build → test → diagnose → repair → verify** loop instead of a one-shot code response.
+The agent gives a local model structured tools, records what really happened, challenges weak success signals, and feeds failures back into the next iteration. The result is a repeatable **reason → construct → execute → observe → diagnose → repair → verify** loop instead of a one-shot code response.
+
+Generated code is not necessarily the objective itself. It can also serve as executable machinery used to measure, transform, simulate, test, or construct later stages of a mission within the controlled environment.
 
 ## Highlights
 
 | | Capability | | Capability |
 |---|---|---|---|
-| 🛠️ | **Build mode** modifies files and executes bounded developer commands. | 🔎 | **Plan mode** inspects projects without changing them. |
+| 🛠️ | **Build mode** constructs and modifies workspace state through structured file operations and bounded executable tooling. | 🔎 | **Plan mode** inspects projects without changing them. |
 | ✅ | **Evidence-oriented verification** checks syntax, runtime behavior, coverage, assertions, and completion claims. | 🔁 | **Failure recovery** turns failed tools and tests into actionable evidence for the next pass. |
 | 🧠 | **Episode memory** preserves outcomes, root causes, fixes, settings, and optional embeddings. | 🎲 | **Reproducible runs** record model, seed, temperature, token use, and Ollama version. |
 | 🖥️ | **Live terminal dashboard** shows status, context use, tool history, memory, and Matrix-style activity. | 🔒 | **Workspace boundaries** add path validation, command allowlisting, timeouts, and destructive-pattern blocking. |
@@ -51,6 +53,19 @@ The agent gives a local model structured tools, records what really happened, ch
 </div>
 
 What-If Machine is not a single prompt followed by a best-effort answer. It is a bounded, evidence-carrying control loop. Before work begins, it probes the local environment and searches prior episodes for lessons; while work is running, every tool result updates a trajectory ledger; when the model tries to finish, mechanical checks compare that verdict with what actually ran.
+
+### Integrated singularity architecture
+
+<div align="center">
+  <img src="assets/singularity-architecture.gif" width="100%" alt="Animated source-accurate semantic view of the What-If Machine task process: persistent episode recall enters before the iterative agent/tool/evidence loop, while outcome correction, reflection, and episode saving occur after the loop">
+</div>
+
+The reference implementation intentionally entangles reasoning, construction, execution, observation, verification, and failure recovery within one evolving task process. These functions remain semantically identifiable for analysis, but their state and effects interact through shared messages, trajectory evidence, and verification facts rather than behaving as independently deployed services. Persistent episode memory touches that same task lifecycle at its boundaries: semantic recall occurs before the iterative loop, while the current source performs evidence-grounded reflection and episode saving after termination only when memory is configured and tool trajectory evidence exists.
+
+In this project, **singularity** is a project-specific architectural term for that integrated computational organization. It is not a claim about artificial general intelligence or the technological singularity. The single-file reference implementation preserves the system as one inspectable executable object; the artifacts it constructs are not required to share that structure.
+
+> [!NOTE]
+> The flowchart below is a semantic decomposition of the runtime. Its named stages describe responsibilities and evidence flow; they are not a requirement that the reference implementation be separated into source modules or services.
 
 ```mermaid
 flowchart TD
@@ -73,9 +88,12 @@ flowchart TD
 
     O -->|Tool-less verdict| G["Conditional completion checks"]
     G -->|Repair evidence| O
-    G -->|Accepted response| A["Mechanical outcome ledger"]
+    G -->|Accepted response| K{"Memory + tool trajectory?"}
+    K -->|No| Z["Return report"]
+    K -->|Yes| A["Mechanical outcome correction"]
     A --> H["Judge-grounded reflection"]
-    H --> Z["Save episode + return report"]
+    H --> S["Save episode"]
+    S --> Z
 ```
 
 ### The control loop, precisely
@@ -87,7 +105,7 @@ flowchart TD
 | **Think → act** | Calls Ollama's `/api/chat`; structured calls pass through path validation, a command allowlist, timeouts, duplicate suppression, and destructive-pattern checks. | Actual arguments, normalized results, success state, token counts, and retained reasoning for later review. |
 | **Diagnose → repair** | Tool failures, red tests, edit spirals, assertion weakening, silent exception swallowing, stalls, and protocol errors produce bounded corrective feedback instead of being mistaken for progress. | The next iteration sees the measured failure and the relevant repair instruction. |
 | **Verify completion** | A tool-less answer can trigger edit/test-debt checks, coverage and assertion feedback, a real entry-point smoke run, and a final-claim check. Applicable failures feed back into the loop. | Passing and failing test order, latest edits, script outcomes, coverage snapshots, smoke results, and claim conflicts remain distinct. |
-| **Finish → learn** | Mechanical rules can downgrade an unsupported success. The pinned judge creates an evidence-grounded reflection, with a code-derived fallback if needed, and the full episode is stored. | Outcome, root cause, fix, verification, confidence, grounding, trajectory, settings, tokens, thinking log, and optional embedding. |
+| **Finish → learn** | The accepted response ends the agent loop. In the current source, when memory is configured **and** the run contains tool trajectory evidence, mechanical rules can downgrade unsupported success, the pinned judge creates an evidence-grounded reflection (with a fallback if needed), and an episode is stored. Otherwise the response returns without episode capture. | When an episode is stored: outcome, root cause, fix, verification, confidence, grounding, trajectory, settings, tokens, thinking log, and optional embedding. |
 
 > [!IMPORTANT]
 > Checks are conditional on the artifact and the evidence available in that run. Mutation-testing infrastructure exists, but the current V180 source sets `MUTATION_MAX_FIRES = 0`, so mutation rounds are disabled by default.
@@ -102,6 +120,18 @@ flowchart TD
 | `file_write` | Create a new file | ✓ | — |
 | `str_replace` | Make a targeted edit | ✓ | — |
 | `bash` | Run allowlisted developer commands | ✓ | — |
+
+### General constructive scope
+
+<div align="center">
+  <img src="assets/constructive-scope.gif" width="100%" alt="Animated open-ended construction field showing bounded direct tools creating evolving workspace state, executing or probing intermediate machinery, returning observations as trajectory evidence, and using that evidence to guide further construction">
+</div>
+
+The six built-in tools are the machine's **direct control surface**, not a catalog of the kinds of outcomes it can construct. `file_write` can create new files and nested workspace structures, while the bounded execution layer can invoke multiple available runtimes, package managers, compilers, build systems, test runners, and supporting utilities. A mission is therefore not restricted to one file, one language, one framework, or one predefined application type.
+
+This makes the reachable construction space **open-ended within the exposed environment**. Programs, tests, tools, processes, files, data structures, interfaces, simulations, and other computational structures may be final deliverables or intermediate machinery whose outputs become evidence for later steps.
+
+The practical boundary is the combined reach of the selected model, the six exposed tools, the command policy, installed software, workspace permissions, dependencies, hardware, and what the runtime can observe well enough to verify. The current default Build prompt remains explicitly software-development oriented; this broader statement describes the capability of the underlying construction substrate rather than claiming that V180 is domain-independent by default.
 
 Read the deeper design notes in [Architecture](docs/ARCHITECTURE.md).
 
