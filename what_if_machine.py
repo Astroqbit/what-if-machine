@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-What-if Machine v25 - Nested Learning Agent for the Terminal
+What-if Machine v180 - Nested Learning Agent for the Terminal
 Enhanced with Matrix-themed visuals, recursive self-correction, and episode memory
 
 CURRENT VERSION: V180            (this file: what_if_machine_v180.py)
