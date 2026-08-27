@@ -12340,16 +12340,16 @@ def create_agent(agent_type: str, client: OllamaClient, working_dir: str = None,
 BANNER = """
 [bold bright_green]╔══════════════════════════════════════════════════════════════════════════════╗[/]
 [bold bright_green]║[/]                                                                              [bold bright_green]║[/]
-[bold bright_green]║[/]  [bold bright_white]██╗    ██╗[/][bold green]██╗  ██╗[/][bold bright_cyan] █████╗ [/][bold cyan]████████╗[/]    [bold bright_magenta]██╗[/][bold magenta]███████╗[/]               [bold bright_green]║[/]
-[bold bright_green]║[/]  [bold bright_white]██║    ██║[/][bold green]██║  ██║[/][bold bright_cyan]██╔══██╗[/][bold cyan]╚══██╔══╝[/]    [bold bright_magenta]██║[/][bold magenta]██╔════╝[/]               [bold bright_green]║[/]
-[bold bright_green]║[/]  [bold bright_white]██║ █╗ ██║[/][bold green]███████║[/][bold bright_cyan]███████║[/][bold cyan]   ██║[/] [bold yellow]█████╗[/][bold bright_magenta]██║[/][bold magenta]█████╗[/]                [bold bright_green]║[/]
-[bold bright_green]║[/]  [bold bright_white]██║███╗██║[/][bold green]██╔══██║[/][bold bright_cyan]██╔══██║[/][bold cyan]   ██║[/] [bold yellow]╚════╝[/][bold bright_magenta]██║[/][bold magenta]██╔══╝[/]                [bold bright_green]║[/]
-[bold bright_green]║[/]  [bold bright_white]╚███╔███╔╝[/][bold green]██║  ██║[/][bold bright_cyan]██║  ██║[/][bold cyan]   ██║[/]       [bold bright_magenta]██║[/][bold magenta]██║[/]                   [bold bright_green]║[/]
-[bold bright_green]║[/]   [bold bright_white]╚══╝╚══╝ [/][bold green]╚═╝  ╚═╝[/][bold bright_cyan]╚═╝  ╚═╝[/][bold cyan]   ╚═╝[/]       [bold bright_magenta]╚═╝[/][bold magenta]╚═╝[/]                   [bold bright_green]║[/]
+[bold bright_green]║[/]  [bold bright_white]██╗    ██╗[/][bold green]██╗  ██╗[/][bold bright_cyan] █████╗ [/][bold cyan]████████╗[/]    [bold bright_magenta]██╗[/][bold magenta]███████╗[/]                  [bold bright_green]║[/]
+[bold bright_green]║[/]  [bold bright_white]██║    ██║[/][bold green]██║  ██║[/][bold bright_cyan]██╔══██╗[/][bold cyan]╚══██╔══╝[/]    [bold bright_magenta]██║[/][bold magenta]██╔════╝[/]                  [bold bright_green]║[/]
+[bold bright_green]║[/]  [bold bright_white]██║ █╗ ██║[/][bold green]███████║[/][bold bright_cyan]███████║[/][bold cyan]   ██║[/] [bold yellow]█████╗[/][bold bright_magenta]██║[/][bold magenta]█████╗[/]                   [bold bright_green]║[/]
+[bold bright_green]║[/]  [bold bright_white]██║███╗██║[/][bold green]██╔══██║[/][bold bright_cyan]██╔══██║[/][bold cyan]   ██║[/] [bold yellow]╚════╝[/][bold bright_magenta]██║[/][bold magenta]██╔══╝[/]                   [bold bright_green]║[/]
+[bold bright_green]║[/]  [bold bright_white]╚███╔███╔╝[/][bold green]██║  ██║[/][bold bright_cyan]██║  ██║[/][bold cyan]   ██║[/]       [bold bright_magenta]██║[/][bold magenta]██║[/]                      [bold bright_green]║[/]
+[bold bright_green]║[/]   [bold bright_white]╚══╝╚══╝ [/][bold green]╚═╝  ╚═╝[/][bold bright_cyan]╚═╝  ╚═╝[/][bold cyan]   ╚═╝[/]       [bold bright_magenta]╚═╝[/][bold magenta]╚═╝[/]                      [bold bright_green]║[/]
 [bold bright_green]║[/]                                                                              [bold bright_green]║[/]
-[bold bright_green]║[/]              [bold bright_cyan]▀▄▀▄▀▄[/] [bold bright_white]M A C H I N E[/] [bold bright_cyan]▄▀▄▀▄▀[/]   [bold yellow][/]                    [bold bright_green]║[/]
+[bold bright_green]║[/]              [bold bright_cyan]▀▄▀▄▀▄[/] [bold bright_white]M A C H I N E[/] [bold bright_cyan]▄▀▄▀▄▀[/]                             [bold bright_green]║[/]
 [bold bright_green]║[/]                                                                              [bold bright_green]║[/]
-[bold bright_green]║[/]   [bright_cyan]◈[/] [dim]Nested Learning[/] [bright_green]◈[/] [dim]Recursive Self-Correction[/] [bright_yellow]◈[/] [dim]T=0.6[/] [bright_magenta]◈[/]          [bold bright_green]║[/]
+[bold bright_green]║[/]   [bright_cyan]◈[/] [dim]Nested Learning[/] [bright_green]◈[/] [dim]Recursive Self-Correction[/] [bright_yellow]◈[/] [dim]T=0.6[/] [bright_magenta]◈[/]             [bold bright_green]║[/]
 [bold bright_green]║[/]                                                                              [bold bright_green]║[/]
 [bold bright_green]╚══════════════════════════════════════════════════════════════════════════════╝[/]
 """
@@ -12476,15 +12476,15 @@ class CLI:
             # The banner lines we'll reveal through the rain (all 75 chars wide)
             banner_lines = [
                 "╔═════════════════════════════════════════════════════════════════════════╗",
-                "║  ██╗    ██╗██╗  ██╗ █████╗ ████████╗    ██╗███████╗                   ║",
-                "║  ██║    ██║██║  ██║██╔══██╗╚══██╔══╝    ██║██╔════╝                   ║",
-                "║  ██║ █╗ ██║███████║███████║   ██║ █████╗██║█████╗                    ║",
-                "║  ██║███╗██║██╔══██║██╔══██║   ██║ ╚════╝██║██╔══╝                    ║",
-                "║  ╚███╔███╔╝██║  ██║██║  ██║   ██║       ██║██║                       ║",
-                "║   ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝       ╚═╝╚═╝                       ║",
-                "║              M A C H I N E                                           ║",
+                "║  ██╗    ██╗██╗  ██╗ █████╗ ████████╗    ██╗███████╗                     ║",
+                "║  ██║    ██║██║  ██║██╔══██╗╚══██╔══╝    ██║██╔════╝                     ║",
+                "║  ██║ █╗ ██║███████║███████║   ██║ █████╗██║█████╗                       ║",
+                "║  ██║███╗██║██╔══██║██╔══██║   ██║ ╚════╝██║██╔══╝                       ║",
+                "║  ╚███╔███╔╝██║  ██║██║  ██║   ██║       ██║██║                          ║",
+                "║   ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝       ╚═╝╚═╝                          ║",
+                "║              M A C H I N E                                              ║",
                 "║                                                                         ║",
-                "║    ◈ Nested Learning Agent ◈ Recursive Self-Correction ◈ T=0.6 ◈       ║",
+                "║    ◈ Nested Learning Agent ◈ Recursive Self-Correction ◈ T=0.6 ◈        ║",
                 "╚═════════════════════════════════════════════════════════════════════════╝",
             ]
             banner_height = len(banner_lines)
