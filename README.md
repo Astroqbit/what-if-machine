@@ -177,7 +177,11 @@ The preferred public Ornith model is:
 ollama pull ornith:35b
 ```
 
-### 4. Run the machine
+### 4. Run the machine (recommended) method
+
+Double-click "what_if_machine.py" to run it
+
+### 5. Run the machine (alternative) method
 
 Interactive Build mode:
 
