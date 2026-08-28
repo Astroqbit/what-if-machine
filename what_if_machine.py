@@ -1,9 +1,24 @@
 #!/usr/bin/env python
 """
-What-if Machine v180 - Nested Learning Agent for the Terminal
+What-if Machine v180.1 - Nested Learning Agent for the Terminal
 Enhanced with Matrix-themed visuals, recursive self-correction, and episode memory
 
-CURRENT VERSION: V180            (this file: what_if_machine_v180.py)
+CURRENT VERSION: V180.1          (this file: what_if_machine_v180_1.py)
+
+V180.1 - AUTO-TEST IS THE EXISTING PHRASE, APPENDED AT THE EXISTING DOOR.
+
+Ending a task with `test and fix it` already works as a natural-language
+control instruction: the unchanged user message enters Agent.process(), stays
+in the pinned task context, and the model drives the existing test -> observe
+-> repair -> re-test loop. There is deliberately no second verification mode
+and no forked prompt. `/autotest on` now appends that exact phrase to every
+question at CLI.process_message(), the one shared door used by interactive,
+one-shot, `/prompt`, Rich, fallback and plain-console paths. If the phrase is
+already at the end it is not duplicated. `/autotest off` restores byte-for-byte
+pass-through, and `--autotest` starts a session enabled. The state lives on the
+CLI, so agent switches and conversation clears do not silently turn it off.
+
+PREVIOUS VERSION: V180           (this file: what_if_machine_v180.py)
 
 V180 - A REFUSED COMMAND IS NOT A FAILED RUN.
 
@@ -12386,6 +12401,27 @@ def normalize_seed(value) -> int:
     return n
 
 
+TEST_AND_FIX_DIRECTIVE = "test and fix it"
+_TEST_AND_FIX_AT_END_RE = re.compile(
+    r"(?i)\btest\s+and\s+fix\s+it[.!?]*\s*\Z"
+)
+
+
+def apply_autotest_directive(message: str, enabled: bool) -> tuple:
+    """Append the existing test-and-fix instruction exactly once.
+
+    This intentionally performs no interpretation and activates no parallel
+    mode. It reproduces what already happens when a person types the phrase at
+    the end of a What-If question. Returning whether text was appended lets the
+    CLI disclose the transformation without making callers compare strings.
+    """
+    if not enabled or not isinstance(message, str) or not message.strip():
+        return message, False
+    if _TEST_AND_FIX_AT_END_RE.search(message):
+        return message, False
+    return message.rstrip() + "\n\n" + TEST_AND_FIX_DIRECTIVE, True
+
+
 COMMANDS = {
     "/help": "Show commands",
     "/models": "List Ollama models", 
@@ -12396,6 +12432,7 @@ COMMANDS = {
     "/memory": "Show/clear episode memory",
     "/inject": "Toggle lesson injection (on/off) - default OFF for review",
     "/confidence": "Toggle semantic reflection (on/off) - default ON",
+    "/autotest": "Append 'test and fix it' to every question (on/off)",
     "/seed": "Show/set builder seed (/seed 12345 | /seed random)",
     "/verbose": "Toggle verbose mode",
     "/prompt": "Load prompt from file (e.g., /prompt task.txt)",
@@ -12405,7 +12442,8 @@ COMMANDS = {
 
 class CLI:
     def __init__(self, model: str, agent_type: str, base_url: str, working_dir: str,
-                 verbose: bool = False, temperature: float = 0.6, seed: int = None):
+                 verbose: bool = False, temperature: float = 0.6, seed: int = None,
+                 autotest: bool = False):
         global VERBOSE
         VERBOSE = verbose
         
@@ -12413,6 +12451,10 @@ class CLI:
         self.agent_type = agent_type
         self.working_dir = working_dir or os.getcwd()
         self.verbose = verbose
+        # V180.1: CLI-owned so /agent switches and /clear preserve it. The
+        # transformation itself happens once at process_message(), before all
+        # rendering/fallback branches and before Agent.process sees the task.
+        self.autotest_enabled = bool(autotest)
         # V45: seed is the reproducibility lever, not temperature. Random
         # per run unless pinned, but ALWAYS recorded on the episode - so a
         # run can be reproduced exactly by passing its seed back in.
@@ -12646,6 +12688,10 @@ class CLI:
             config.add_row("[bright_yellow]📊 Context[/]", f"[bold bright_yellow]{self.client.options.get('num_ctx', 256000):,}[/] [dim]tokens[/]")
             config.add_row("[bright_magenta]🎯 Temp[/]", f"[bold bright_magenta]{self.client.options.get('temperature', 0.6)}[/] [dim]stable creativity[/]")
             config.add_row("[bright_cyan]🎲 Seed[/]", f"[bold bright_cyan]{self.seed}[/] [dim]--seed {self.seed} to replay[/]")
+            autotest_status = ("[bold bright_green]ON[/] [dim]│ appends ‘test and fix it’[/]"
+                               if self.autotest_enabled else
+                               "[bold yellow]OFF[/] [dim]│ /autotest on[/]")
+            config.add_row("[bright_green]🧪 Auto-test[/]", autotest_status)
             config.add_row("[bright_blue]📁 Dir[/]", f"[dim bright_blue]{str(self.working_dir)[-45:]}[/]")
             
             if mem_stats["total"] > 0:
@@ -12688,11 +12734,11 @@ class CLI:
                 "[bold bright_black]/verbose[/] [dim]› debug[/]",
                 "[bold bright_red]/quit[/] [dim]› exit[/]"
             )
-            # Row 4 - V24: semantic reflection toggle, V45.9: seed control
+            # Row 4 - V24 semantic reflection, V45.9 seed, V180.1 auto-test
             cmd_grid.add_row(
                 "[bold bright_cyan]/confidence[/] [dim]› on|off[/]",
                 "[bold bright_cyan]/seed[/] [dim]› n|random[/]",
-                ""
+                "[bold bright_green]/autotest[/] [dim]› on|off[/]"
             )
             
             self.console.print(Panel(
@@ -12705,9 +12751,10 @@ class CLI:
             self.console.print()  # Spacing
         else:
             print(BANNER)
-            print(f"Model: {self.model} | Agent: {self.agent_type} | Verbose: {self.verbose}")
+            print(f"Model: {self.model} | Agent: {self.agent_type} | Verbose: {self.verbose} | "
+                  f"Auto-test: {'ON' if self.autotest_enabled else 'OFF'}")
             print(f"Dir: {self.working_dir}")
-            print("/help commands | /prompt load file | /tools list | /quit exit\n")
+            print("/help commands | /autotest on|off | /prompt load file | /tools list | /quit exit\n")
     
     async def initialize(self) -> bool:
         self.print("[dim bright_cyan]⟳ Connecting to Ollama...[/dim bright_cyan]")
@@ -12785,19 +12832,28 @@ class CLI:
         # Show a beautiful tip box
         if self.console:
             tip_text = Text()
-            tip_text.append("💡 ", style="bright_yellow")
-            tip_text.append("PRO TIP: ", style="bold bright_yellow")
-            tip_text.append('End prompts with ', style="dim")
-            tip_text.append('"test and fix it"', style="bold bright_cyan")
-            tip_text.append(' for automatic test→fix cycles', style="dim")
+            if self.autotest_enabled:
+                tip_text.append("🧪 ", style="bright_green")
+                tip_text.append("AUTO-TEST ON: ", style="bold bright_green")
+                tip_text.append('Every question will end with ', style="dim")
+                tip_text.append('"test and fix it"', style="bold bright_cyan")
+            else:
+                tip_text.append("💡 ", style="bright_yellow")
+                tip_text.append("PRO TIP: ", style="bold bright_yellow")
+                tip_text.append('End prompts with ', style="dim")
+                tip_text.append('"test and fix it"', style="bold bright_cyan")
+                tip_text.append(' for automatic test→fix cycles', style="dim")
             self.console.print(Panel(
                 tip_text,
-                border_style="dim yellow",
+                border_style="green" if self.autotest_enabled else "dim yellow",
                 box=box.ROUNDED,
                 padding=(0, 1)
             ))
         else:
-            self.print("[dim]◈ Tip: End prompts with \"test and fix it\" for auto test→fix cycles[/dim]")
+            if self.autotest_enabled:
+                self.print("[green]🧪 AUTO-TEST ON: every question will end with \"test and fix it\"[/green]")
+            else:
+                self.print("[dim]◈ Tip: End prompts with \"test and fix it\" for auto test→fix cycles[/dim]")
         
         # Ready indicator
         self.print("[bold bright_green]━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[/bold bright_green]")
@@ -12932,6 +12988,24 @@ class CLI:
                 self.print(f"  [dim]ON:  model-picked failure_class + LLM causality judge +[/dim]")
                 self.print(f"  [dim]     annotate-don't-template + quality-filtered injection[/dim]")
                 self.print(f"  [dim]OFF: V23 mechanical path (regex class, lexical gate, template)[/dim]")
+        elif c == "/autotest":
+            if args and args[0].lower() in ["on", "off"]:
+                self.autotest_enabled = (args[0].lower() == "on")
+                status = "[green]ON[/green]" if self.autotest_enabled else "[yellow]OFF[/yellow]"
+                self.print(f"[bright_green]🧪 Auto-test: {status}[/bright_green]")
+                if self.autotest_enabled:
+                    self.print("[dim]   Every question will receive the literal phrase "
+                               "‘test and fix it’ at its end before the agent sees it.[/dim]")
+                else:
+                    self.print("[dim]   Questions now pass to the agent unchanged.[/dim]")
+            else:
+                status = "[green]ON[/green]" if self.autotest_enabled else "[yellow]OFF[/yellow]"
+                self.print("\n[bold bright_green]◈ Automatic Test → Fix ◈[/bold bright_green]")
+                self.print(f"  [cyan]Status:[/cyan] {status}")
+                self.print("\n  [dim]Usage: /autotest on|off[/dim]")
+                self.print("  [dim]ON:  appends ‘test and fix it’ to each question[/dim]")
+                self.print("  [dim]OFF: sends each question unchanged[/dim]")
+                self.print("  [dim]The phrase is never duplicated when already present.[/dim]")
         elif c == "/seed":
             # V45.9: a seed lives in THREE places and they must move together
             # or the machine lies about itself:
@@ -13051,6 +13125,17 @@ class CLI:
         while tool outputs print above it. This gives real-time visibility into
         what the agent is doing.
         """
+        # V180.1: ONE shared transformation, before every rendering/fallback
+        # branch and before Agent.process() performs memory search, task pinning,
+        # iteration, reflection or episode capture. The agent therefore receives
+        # exactly the message it would have received if the operator had typed
+        # the phrase manually at the end. Slash commands never reach this method
+        # (except /prompt's loaded task, which is intentionally a real question).
+        message, autotest_appended = apply_autotest_directive(
+            message, self.autotest_enabled)
+        if autotest_appended:
+            self.print("[bright_green]🧪 Auto-test appended: "
+                       "[bold bright_cyan]test and fix it[/bold bright_cyan][/bright_green]")
         
         # Initialize the dashboard with REAL token tracking and memory stats
         dashboard = AgentStatusDisplay(
@@ -13489,6 +13574,8 @@ async def main():
     parser.add_argument("--url", "-u", default="http://localhost:11434", help="Ollama URL")
     parser.add_argument("--dir", "-d", default=None, help="Working directory")
     parser.add_argument("--verbose", "-v", action="store_true", help="Show debug info")
+    parser.add_argument("--autotest", action="store_true",
+                        help="Append 'test and fix it' to every question in this session")
     parser.add_argument("--log", default=None, metavar="FILE",
                         help="Write the uncapped run log here instead of "
                              "whatif_logs/ beside this script")
@@ -13530,7 +13617,7 @@ async def main():
                     f"{DEBUG_MAX_CHARS:,} chars per entry)")
 
     cli = CLI(args.model, args.agent, args.url, args.dir, args.verbose,
-              temperature=args.temp, seed=args.seed)
+              temperature=args.temp, seed=args.seed, autotest=args.autotest)
     
     if not args.prompt:
         cli.print_banner()
