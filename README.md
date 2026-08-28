@@ -319,7 +319,7 @@ Because this is proprietary software, do not submit code or documentation change
 
 Copyright © 2026 Matthew Newland. All rights reserved.
 
-What-If Machine is **proprietary, source-available software**, not open-source software. No permission is granted to use, copy, modify, distribute, sublicense, sell, host, or create derivative works except under a separate written agreement from the copyright owner. See the [Proprietary License](LICENSE).
+What-If Machine is **proprietary, source-available software**, not open-source software. No permission is granted to distribute, sublicense, sell, host, or create derivative works except under a separate written agreement from the copyright owner. See the [Proprietary License](LICENSE).
 
 ## Author
 
