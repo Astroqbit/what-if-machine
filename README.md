@@ -69,43 +69,60 @@ In this project, **singularity** is a project-specific architectural term for th
 
 ```mermaid
 flowchart TD
-    Q["Task + CLI configuration"] --> P["Probe OS, Python, packages, cwd"]
-    P --> R["Semantic episode search"]
-    R --> F["Stored quality + grounding filter"]
-    F -->|Default: review candidates| M
-    F -->|/inject on| J["No-tools relevance judge"]
+    Q["Task + CLI configuration"] --> M{"Configured agent mode"}
+
+    M -->|Build| B["Build initialization<br/>all 6 tools + environment facts"]
+    M -->|Plan| L["Plan initialization<br/>read · list · search only"]
+
+    B --> T["Begin task · reset trajectory/state"]
+    L --> T
+
+    T --> R{"Episode memory available?"}
+    R -->|No| U["Add task to agent context"]
+    R -->|Yes| S["Semantic episode search"]
+
+    S --> F["Quality + grounding filter<br/>active with /confidence on"]
+    F --> D{"Candidates found?"}
+
+    D -->|No| U
+    D -->|Yes · /inject off| V["Expose candidates for review"]
+    V --> U
+
+    D -->|Yes · /inject on| J["No-tools relevance judge"]
     J --> C["Inject validated lessons"]
+    C --> U
 
-    C --> M{"Agent mode"}
-    M -->|Build| B["Read · search · write · edit · bash"]
-    M -->|Plan| L["Read · list · search"]
-    B --> O["Ollama agent loop"]
-    L --> O
+    U --> O["Ollama agent loop"]
 
-    O -->|Structured tool calls| X["Path-checked ToolExecutor"]
-    X --> E["Normalize result into trajectory evidence"]
+    O -->|Structured tool calls| X["Bounded ToolExecutor"]
+    X --> E["Record tool result + trajectory evidence<br/>apply in-loop guards / recovery"]
     E --> O
 
-    O -->|Tool-less verdict| G["Conditional completion checks"]
-    G -->|Repair evidence| O
-    G -->|Accepted response| K{"Memory + tool trajectory?"}
+    O -->|Tool-less completion attempt| G["Conditional completion checks"]
+    G -->|Repair / contradictory evidence| O
+    G -->|Accepted response| A["Terminate agent loop"]
+
+    O -->|Max iterations / terminal failure| A
+
+    A --> K{"Memory + tool trajectory?"}
     K -->|No| Z["Return report"]
-    K -->|Yes| A["Mechanical outcome correction"]
-    A --> H["Judge-grounded reflection"]
-    H --> S["Save episode"]
-    S --> Z
+    K -->|Yes| C2["Mechanical outcome correction"]
+    C2 --> H["Evidence-grounded reflection"]
+    H --> P["Save episode"]
+    P --> Z
 ```
 
 ### The control loop, precisely
 
-| Stage | What the current source does | Evidence carried forward |
-|---|---|---|
-| **Bootstrap** | Builds separate builder and pinned judge clients, probes the workspace, and exposes tools according to Build or Plan mode. | Model, seed, temperature, Ollama version, platform facts, and allowed tool schemas. |
-| **Recall** | Searches episode embeddings for up to 50 candidates and drops low-quality or ungrounded records. When `/inject` is on, the no-tools judge decides which lessons transfer; injection is off by default for review. | Candidates remain reviewable; only judge-validated lessons enter system context when injection is enabled. |
-| **Think → act** | Calls Ollama's `/api/chat`; structured calls pass through path validation, a command allowlist, timeouts, duplicate suppression, and destructive-pattern checks. | Actual arguments, normalized results, success state, token counts, and retained reasoning for later review. |
-| **Diagnose → repair** | Tool failures, red tests, edit spirals, assertion weakening, silent exception swallowing, stalls, and protocol errors produce bounded corrective feedback instead of being mistaken for progress. | The next iteration sees the measured failure and the relevant repair instruction. |
-| **Verify completion** | A tool-less answer can trigger edit/test-debt checks, coverage and assertion feedback, a real entry-point smoke run, and a final-claim check. Applicable failures feed back into the loop. | Passing and failing test order, latest edits, script outcomes, coverage snapshots, smoke results, and claim conflicts remain distinct. |
-| **Finish → learn** | The accepted response ends the agent loop. In the current source, when memory is configured **and** the run contains tool trajectory evidence, mechanical rules can downgrade unsupported success, the pinned judge creates an evidence-grounded reflection (with a fallback if needed), and an episode is stored. Otherwise the response returns without episode capture. | When an episode is stored: outcome, root cause, fix, verification, confidence, grounding, trajectory, settings, tokens, thinking log, and optional embedding. |
+| Stage                 | What the current source does                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | Evidence carried forward                                                                                                                                                                                                                                               |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Bootstrap**         | Creates separate builder and pinned judge clients, then configures the selected agent mode. **Build** receives all six tools and a one-time environment probe covering Python, available packages, the working directory, and its top-level contents. **Plan** receives only `file_read`, `list_dir`, and `grep_search` and does not run the Build environment probe.                                                                                                                                       | Selected mode and tool schemas, builder model/seed/temperature, pinned judge configuration, and—on Build runs—the probed environment facts embedded in the Build prompt.                                                                                               |
+| **Recall**            | If episode memory is available, searches semantically similar episodes for up to 50 candidates. With `/confidence on`, stored candidates marked ungrounded or with recorded confidence below `0.7` are filtered; `/confidence off` makes that quality filter a no-op. Candidates remain reviewable by default. With `/inject on`, the pinned no-tools judge selects transferable lessons and only validated lessons are inserted into task context.                                                         | Candidate episodes and similarity scores remain reviewable; when injection is enabled, only judge-selected lessons are appended to the agent context.                                                                                                                  |
+| **Think → act**       | Calls Ollama's `/api/chat`. Structured tool calls are dispatched through `ToolExecutor`; file operations remain workspace-bounded, while `bash` applies its command allowlist, path controls, timeouts, and destructive-pattern restrictions. Agent-level guards separately handle duplicate calls and distinguish commands that actually executed from calls that were refused or suppressed.                                                                                                              | Tool-result messages return to the model; the trajectory records tool identity, bounded argument summaries, and success state. Token counts and the review-only thinking log are retained separately.                                                                  |
+| **Diagnose → repair** | Execution evidence is interpreted while the loop is still running. Tool failures, red tests, coverage gaps surfaced after a passing self-test, skipped or ineffective assertions, weakened tests, silent exception swallowing, failed-edit spirals, security-boundary hits, stalls, and protocol failures can produce bounded corrective feedback or recovery actions instead of being mistaken for progress.                                                                                               | Corrective messages plus evolving verification state: latest edits, test pass/fail ordering, script-run results, failure state, recovery state, and mutation measurements when that infrastructure is enabled.                                                         |
+| **Verify completion** | A non-empty **tool-less completion attempt** enters conditional completion checks. Depending on the artifact and accumulated evidence, the runtime can challenge unverified or red-after-edit state, run a real entry-point smoke check, run mutation verification when enabled, and compare final claims against the recorded last execution of scripts the response names. A failed check feeds concrete repair evidence back into the agent loop; an accepted response terminates it.                    | Edit/test ordering, entry-smoke results, script last-run facts, claim conflicts, and mutation history when enabled remain distinct instead of collapsing into a single success flag.                                                                                   |
+| **Finish → learn**    | An accepted response, terminal failure, or exhausted iteration budget ends the agent loop. When episode memory is configured **and** the run contains tool trajectory evidence, mechanical rules first correct an outcome that contradicts execution evidence; the pinned judge then generates a structured reflection with grounding/evidence checks and fallback behavior, and the resulting episode is stored. Without memory or tool trajectory evidence, the response returns without episode capture. | When an episode is stored: corrected outcome, root cause, fix, verification, confidence, grounding, trajectory, iterations, model settings, token cost, review-only thinking log, mutation history when present, and an optional embedding for future semantic recall. |
+
 
 > [!IMPORTANT]
 > Checks are conditional on the artifact and the evidence available in that run. Mutation-testing infrastructure exists, but the current V180 source sets `MUTATION_MAX_FIRES = 0`, so mutation rounds are disabled by default.
