@@ -12423,20 +12423,21 @@ def apply_autotest_directive(message: str, enabled: bool) -> tuple:
 
 
 COMMANDS = {
-    "/help": "Show commands",
-    "/models": "List Ollama models", 
-    "/model": "Switch model (e.g., /model gemma4:12b)",
-    "/agent": "Switch agent (build/plan)",
-    "/clear": "Clear history",
-    "/tools": "List available tools",
-    "/memory": "Show/clear episode memory",
-    "/inject": "Toggle lesson injection (on/off) - default OFF for review",
-    "/confidence": "Toggle semantic reflection (on/off) - default ON",
-    "/autotest": "Append 'test and fix it' to every question (on/off)",
-    "/seed": "Show/set builder seed (/seed 12345 | /seed random)",
-    "/verbose": "Toggle verbose mode",
-    "/prompt": "Load prompt from file (e.g., /prompt task.txt)",
-    "/quit": "Exit",
+    "/help": "Show all commands and usage",
+    "/models": "List available Ollama models",
+    "/model": "Show/switch model (/model <name>)",
+    "/agent": "Show/switch agent (/agent build|plan)",
+    "/clear": "Clear conversation history (episode memory is preserved)",
+    "/tools": "List every tool available to the current agent",
+    "/memory": "Show episode memory or erase it (/memory clear)",
+    "/inject": "Show/set lesson injection (/inject on|off; default OFF)",
+    "/confidence": "Show/set semantic reflection (/confidence on|off; default ON)",
+    "/autotest": "Show/set automatic test-and-fix (/autotest on|off)",
+    "/seed": "Show/set builder seed (/seed <number> | /seed random)",
+    "/temp": "Show/set builder temperature (/temp <0.0-2.0>)",
+    "/verbose": "Toggle developer debug output",
+    "/prompt": "Load and run a prompt file (/prompt <filename>)",
+    "/quit": "Exit (aliases: /exit, /q)",
 }
 
 
@@ -12504,6 +12505,12 @@ class CLI:
             text = str(args[0]) if args else ""
             text = re.sub(r'\[.*?\]', '', text)
             print(text)
+
+    @staticmethod
+    def _toggle_badge(enabled: bool) -> str:
+        """Return one unmistakable live-state badge for Rich and plain output."""
+        return ("[bold bright_green]● ON[/]" if enabled else
+                "[bold bright_red]● OFF[/]")
     
     def print_banner(self):
         if self.console:
@@ -12688,9 +12695,9 @@ class CLI:
             config.add_row("[bright_yellow]📊 Context[/]", f"[bold bright_yellow]{self.client.options.get('num_ctx', 256000):,}[/] [dim]tokens[/]")
             config.add_row("[bright_magenta]🎯 Temp[/]", f"[bold bright_magenta]{self.client.options.get('temperature', 0.6)}[/] [dim]stable creativity[/]")
             config.add_row("[bright_cyan]🎲 Seed[/]", f"[bold bright_cyan]{self.seed}[/] [dim]--seed {self.seed} to replay[/]")
-            autotest_status = ("[bold bright_green]ON[/] [dim]│ appends ‘test and fix it’[/]"
+            autotest_status = (f"{self._toggle_badge(True)} [dim]│ appends ‘test and fix it’[/]"
                                if self.autotest_enabled else
-                               "[bold yellow]OFF[/] [dim]│ /autotest on[/]")
+                               f"{self._toggle_badge(False)} [dim]│ /autotest on[/]")
             config.add_row("[bright_green]🧪 Auto-test[/]", autotest_status)
             config.add_row("[bright_blue]📁 Dir[/]", f"[dim bright_blue]{str(self.working_dir)[-45:]}[/]")
             
@@ -12710,6 +12717,15 @@ class CLI:
             # ═══════════════════════════════════════════════════════════════════
             # BEAUTIFUL COMMAND REFERENCE PANEL
             # ═══════════════════════════════════════════════════════════════════
+
+            # Show the actual live toggle state, not an ambiguous gray "on|off"
+            # usage hint. The banner is normally printed before Agent creation,
+            # so the getattr fallbacks intentionally mirror Agent's defaults.
+            inject_badge = self._toggle_badge(
+                getattr(self.agent, "inject_enabled", False))
+            confidence_badge = self._toggle_badge(
+                getattr(self.agent, "confidence_enabled", True))
+            autotest_badge = self._toggle_badge(self.autotest_enabled)
             
             cmd_grid = Table(show_header=False, box=None, padding=(0, 1), expand=True)
             cmd_grid.add_column(width=25)
@@ -12718,27 +12734,28 @@ class CLI:
             
             # Row 1 - Primary commands
             cmd_grid.add_row(
-                "[bold cyan]/help[/] [dim]› commands[/]",
+                "[bold #ffd700]/help[/] [dim]› commands[/]",
                 "[bold green]/prompt[/] [dim]› load file[/]",
-                "[bold yellow]/tools[/] [dim]› list all[/]"
+                "[bold bright_white]/tools[/] [dim]› list all[/]"
             )
             # Row 2 - Session commands
             cmd_grid.add_row(
                 "[bold magenta]/memory[/] [dim]› episodes[/]",
-                "[bold blue]/inject[/] [dim]› on│off[/]",
-                "[bold red]/clear[/] [dim]› reset[/]"
+                f"[bold blue]/inject[/] [dim]›[/] {inject_badge}",
+                "[bold #ff8700]/clear[/] [dim]› clear chat[/]"
             )
             # Row 3 - Config commands
             cmd_grid.add_row(
                 "[bold white]/model[/] [dim]› switch[/]",
-                "[bold bright_black]/verbose[/] [dim]› debug[/]",
+                f"[bold bright_magenta]/temp[/] [dim]›[/] "
+                f"[bold bright_magenta]{self.temperature:g}[/]",
                 "[bold bright_red]/quit[/] [dim]› exit[/]"
             )
             # Row 4 - V24 semantic reflection, V45.9 seed, V180.1 auto-test
             cmd_grid.add_row(
-                "[bold bright_cyan]/confidence[/] [dim]› on|off[/]",
+                f"[bold bright_cyan]/confidence[/] [dim]›[/] {confidence_badge}",
                 "[bold bright_cyan]/seed[/] [dim]› n|random[/]",
-                "[bold bright_green]/autotest[/] [dim]› on|off[/]"
+                f"[bold bright_green]/autotest[/] [dim]›[/] {autotest_badge}"
             )
             
             self.console.print(Panel(
@@ -13064,6 +13081,44 @@ class CLI:
                 self.print(f"[yellow]   ⚠ {len(self.agent.messages)} message(s) already in "
                            f"history - a seed reproduces a run from a CLEAN start. "
                            f"Use /clear first for a true replay.[/yellow]")
+        elif c == "/temp":
+            # Builder-only control. The judge deliberately remains pinned at
+            # temperature 0.0 so changing the experiment does not also change
+            # the measuring instrument. Keep the display, live Ollama options,
+            # and episode record synchronized just like /seed does.
+            if not args:
+                self.print("\n[bold bright_magenta]Builder Temperature[/bold bright_magenta]")
+                self.print(f"  [magenta]Current:[/magenta] "
+                           f"[bold bright_magenta]{self.temperature:g}[/bold bright_magenta]")
+                self.print("  [magenta]Grader:[/magenta] [dim]0.0 (pinned, never moves)[/dim]")
+                self.print("\n  [dim]Usage: /temp <number>[/dim]")
+                self.print("  [dim]Range: 0.0-2.0. Applies to the next builder call.[/dim]")
+                return True
+
+            if len(args) != 1:
+                self.print("[red]Usage: /temp <number> (example: /temp 0.6)[/red]")
+                return True
+
+            try:
+                new_temp = float(args[0])
+            except (TypeError, ValueError):
+                new_temp = -1.0
+
+            # This comparison also rejects NaN and infinities.
+            if not (0.0 <= new_temp <= 2.0):
+                self.print(f"[red]Not a usable temperature: {escape(args[0])}[/red]")
+                self.print("[dim]   Enter one number from 0.0 through 2.0.[/dim]")
+                return True
+
+            old_temp = self.temperature
+            self.temperature = new_temp
+            self.client.options["temperature"] = new_temp
+            self.gen_params["temperature"] = new_temp
+
+            self.print(f"[bright_magenta]🎯 Temperature: [bold]{old_temp:g}[/bold] -> "
+                       f"[bold bright_magenta]{new_temp:g}[/bold bright_magenta][/bright_magenta]")
+            self.print("[dim]   Applies to the next builder call and next episode. "
+                       "Grader stays pinned at 0.0.[/dim]")
         elif c == "/verbose":
             self.verbose = not self.verbose
             VERBOSE = self.verbose
