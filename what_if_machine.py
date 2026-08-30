@@ -1,9 +1,22 @@
 #!/usr/bin/env python
 """
-What-if Machine v180.5 - Nested Learning Agent for the Terminal
+What-if Machine v180.6 - Nested Learning Agent for the Terminal
 Enhanced with Matrix-themed visuals, recursive self-correction, and episode memory
 
-CURRENT VERSION: V180.5          (this file: what_if_machine.py)
+CURRENT VERSION: V180.6          (this file: what_if_machine.py)
+
+V180.6 - FULL-SCREEN PROMPT STAYS BELOW THE HUD.
+
+LiveRender deliberately leaves the cursor on its last rendered row. At narrower
+terminal widths the prompt appeared below the Quick Commands panel only because
+the panel's bottom border reached the right edge and the terminal wrapped it.
+Maximizing Windows Terminal exposed the unused columns, so the prompt appeared
+to the right of that border. The HUD now owns one final empty anchor row. That
+puts the prompt below the panel at column zero at every terminal width, and the
+anchor is included in LiveRender's measured height so transient erasure remains
+exact and does not leave duplicate panels or blank-line debris.
+
+PREVIOUS VERSION: V180.5
 
 V180.5 - ONE STATUS HUD, REFRESHED IN PLACE.
 
@@ -12643,8 +12656,19 @@ class CLI:
         )
 
     def _status_hud(self):
-        """Return the one idle-screen HUD rendered directly above the prompt."""
-        return Group(self._build_session_panel(), self._build_quick_commands_panel())
+        """Return the idle HUD plus its measured, left-aligned prompt row.
+
+        LiveRender does not terminate its final row. The empty Text therefore
+        supplies a real last row at column zero instead of relying on the
+        terminal to wrap the Quick Commands border at a particular width.
+        Keeping that row inside the LiveRender also lets position_cursor() erase
+        the HUD and submitted prompt with the existing exact height accounting.
+        """
+        return Group(
+            self._build_session_panel(),
+            self._build_quick_commands_panel(),
+            Text(""),
+        )
 
     def _show_status_hud(self):
         """Draw one measurable HUD instance so it can be erased without copies."""
@@ -12669,7 +12693,13 @@ class CLI:
               (ControlType.ERASE_IN_LINE, 2)) * prompt_rows
         )
         self.console.control(erase_prompt)
-        self.console.control(status_render.restore_cursor())
+        # The prompt starts on LiveRender's final (empty) anchor row. After the
+        # submitted prompt rows are erased, the cursor is therefore already on
+        # the render's last row. position_cursor() clears that row and moves up
+        # height - 1 rows to the HUD's first row. restore_cursor() is intended
+        # for a cursor one row *below* a render and would erase one history line
+        # above this HUD.
+        self.console.control(status_render.position_cursor())
 
     def _print_plain_status(self):
         """Fallback status summary for terminals where Rich is unavailable."""
