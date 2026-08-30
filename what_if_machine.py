@@ -3,7 +3,7 @@
 What-if Machine v180.3 - Nested Learning Agent for the Terminal
 Enhanced with Matrix-themed visuals, recursive self-correction, and episode memory
 
-CURRENT VERSION: V180.3          (this file: what_if_machine_v180_1.py)
+CURRENT VERSION: V180.3          (this file: what_if_machine.py)
 
 V180.1 - AUTO-TEST IS THE EXISTING PHRASE, APPENDED AT THE EXISTING DOOR.
 
@@ -18,7 +18,7 @@ already at the end it is not duplicated. `/autotest off` restores byte-for-byte
 pass-through, and `--autotest` starts a session enabled. The state lives on the
 CLI, so agent switches and conversation clears do not silently turn it off.
 
-PREVIOUS VERSION: V180           (this file: what_if_machine_v180.py)
+PREVIOUS VERSION: V180           (this file: what_if_machine.py)
 
 V180 - A REFUSED COMMAND IS NOT A FAILED RUN.
 
