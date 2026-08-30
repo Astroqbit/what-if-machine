@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 """
-What-if Machine v180.6 - Nested Learning Agent for the Terminal
+What-if Machine v180.7 - Nested Learning Agent for the Terminal
 Enhanced with Matrix-themed visuals, recursive self-correction, and episode memory
 
-CURRENT VERSION: V180.6          (this file: what_if_machine.py)
+CURRENT VERSION: V180.7          (this file: what_if_machine.py)
 
 V180.6 - FULL-SCREEN PROMPT STAYS BELOW THE HUD.
 
@@ -12892,20 +12892,76 @@ class CLI:
             print(f"Dir: {self.working_dir}")
             print("/help commands | /autotest on|off | /prompt load file | /tools list | /quit exit\n")
     
-    async def initialize(self) -> bool:
+    async def _connect_to_ollama(self, wait_for_retry: bool = True) -> bool:
+        """Connect without making a double-clicked Windows window disappear.
+
+        In interactive mode a stopped local Ollama server is recoverable: the
+        operator can start the Ollama app (or ``ollama serve``), return here,
+        and retry without losing this What-if Machine session.  One-shot CLI
+        calls still fail promptly after printing the same actionable help.
+        """
         self.print("[dim bright_cyan]⟳ Connecting to Ollama...[/dim bright_cyan]")
-        
+
         if not HTTPX_AVAILABLE:
             self.print("[red]✗ Error: httpx not installed![/red]")
             self.print("[yellow]  Run: pip install httpx rich[/yellow]")
             return False
-        
-        if not await self.client.check_connection():
-            self.print("[bold red]✗ Cannot connect to Ollama![/bold red]")
-            self.print("[yellow]  Make sure Ollama is running: [bold]ollama serve[/bold][/yellow]")
-            return False
-        
+
+        while not await self.client.check_connection():
+            self.print(
+                f"[bold red]✗ Ollama is not running or cannot be reached at "
+                f"{escape(self.client.base_url)}.[/bold red]"
+            )
+
+            local_url = any(
+                host in self.client.base_url.lower()
+                for host in ("localhost", "127.0.0.1", "[::1]")
+            )
+            if local_url and os.name == "nt":
+                self.print(
+                    "[yellow]  1. Open [bold bright_white]Ollama[/bold bright_white] "
+                    "from the Windows Start menu and wait for it to start.\n"
+                    "  2. Or open PowerShell/CMD and run: "
+                    "[bold bright_white]ollama serve[/bold bright_white][/yellow]"
+                )
+            elif local_url:
+                self.print(
+                    "[yellow]  Start Ollama in another terminal with: "
+                    "[bold bright_white]ollama serve[/bold bright_white][/yellow]"
+                )
+            else:
+                self.print(
+                    "[yellow]  Check that the remote Ollama server is running "
+                    "and that --url is correct.[/yellow]"
+                )
+
+            if not wait_for_retry:
+                return False
+
+            try:
+                question = (
+                    "[bold bright_cyan]Press Enter after Ollama is running to retry, "
+                    "or type Q to quit: [/bold bright_cyan]"
+                )
+                answer = (self.console.input(question) if self.console
+                          else input("Press Enter after Ollama is running to retry, "
+                                     "or type Q to quit: "))
+            except (EOFError, KeyboardInterrupt):
+                self.print("\n[yellow]Ollama connection retry cancelled.[/yellow]")
+                return False
+
+            if answer.strip().lower() in ("q", "quit", "exit"):
+                self.print("[yellow]Ollama connection retry cancelled.[/yellow]")
+                return False
+            self.print("[dim bright_cyan]⟳ Retrying Ollama connection...[/dim bright_cyan]")
+
         self.print("[bold bright_green]✓ Connected to Ollama[/bold bright_green]")
+        return True
+
+    async def initialize(self, wait_for_retry: bool = True) -> bool:
+        if not await self._connect_to_ollama(wait_for_retry=wait_for_retry):
+            return False
+
         # V45.1: probe once; gen_params is read at episode-save time.
         self.gen_params["ollama_version"] = await self.client.get_version()
         self.agent = create_agent(self.agent_type, self.client, self.working_dir, self.memory,
@@ -13190,8 +13246,9 @@ class CLI:
 
             self.print(f"[green]🎲 Seed: [bold]{old_seed}[/bold] -> "
                        f"[bold bright_cyan]{new_seed}[/bold bright_cyan][/green]")
-            self.print(f"[dim]   Applies to the next model call; recorded on the "
-                       f"next episode. Graders stay at 7.[/dim]")
+            self.print(f"[dim]   Starts with the next builder call and remains active "
+                       f"until changed; subsequent episodes record it. "
+                       f"Grader seed stays pinned at 7.[/dim]")
             # A seed only reproduces a run from the same starting state. If
             # history is already loaded, the next call's prompt is not the
             # prompt the seed was measured against - say so rather than let
@@ -13823,7 +13880,7 @@ async def main():
     if not args.prompt:
         cli.print_banner()
     
-    if not await cli.initialize():
+    if not await cli.initialize(wait_for_retry=not bool(args.prompt)):
         sys.exit(1)
     
     await cli.run(args.prompt)
