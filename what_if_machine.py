@@ -1,9 +1,37 @@
 #!/usr/bin/env python
 """
-What-if Machine v180.3 - Nested Learning Agent for the Terminal
+What-if Machine v180.5 - Nested Learning Agent for the Terminal
 Enhanced with Matrix-themed visuals, recursive self-correction, and episode memory
 
-CURRENT VERSION: V180.3          (this file: what_if_machine.py)
+CURRENT VERSION: V180.5          (this file: what_if_machine.py)
+
+V180.5 - ONE STATUS HUD, REFRESHED IN PLACE.
+
+V180.4 corrected stale values by printing a new pair of panels after each
+change. The values were right, but terminal scrollback then contained duplicate
+Session Configuration and Quick Commands panels. V180.5 makes the pair a
+single transient prompt HUD: while the CLI is waiting it is the only copy on
+screen; when Enter is pressed, that exact rendered block and the echoed input
+line are erased, the input is reprinted once as history, and the next prompt
+draws the HUD again from current runtime state. A toggle therefore changes the
+existing visible status without accumulating panels. The HUD is removed before
+Agent.process() starts, so it never nests or fights with the separate live task
+dashboard.
+
+PREVIOUS VERSION: V180.4
+
+V180.4 - QUICK-COMMAND STATUS IS NOW LIVE.
+
+The Session Configuration and Quick Commands panels used to be startup-only
+snapshots. Commands changed the real runtime setting, but the old OFF/value in
+those panels remained on screen and made the machine appear desynchronized.
+Both panels now come from one shared renderer, and every successful command
+that changes displayed state immediately prints a refreshed snapshot. This
+covers /autotest, /inject, /confidence, /temp, /seed, /model, /agent and
+/memory clear. The Rich badges remain bright green for ON and bright red for
+OFF; plain-console mode receives the same current values as text.
+
+PREVIOUS VERSION: V180.3
 
 V180.1 - AUTO-TEST IS THE EXISTING PHRASE, APPENDED AT THE EXISTING DOOR.
 
@@ -2385,6 +2413,9 @@ try:
     from rich.table import Table
     from rich.text import Text
     from rich.live import Live
+    from rich.live_render import LiveRender
+    from rich.control import Control, ControlType
+    from rich.cells import cell_len
     from rich.align import Align
     from rich import box
     from rich.markup import escape  # V22.1: literal [brackets] in panels
@@ -12533,6 +12564,126 @@ class CLI:
         """Return one unmistakable live-state badge for Rich and plain output."""
         return ("[bold bright_green]● ON[/]" if enabled else
                 "[bold bright_red]● OFF[/]")
+
+    def _build_session_panel(self):
+        """Build the Session Configuration panel from current runtime state."""
+        tool_count = len(self.agent.tools) if self.agent else (
+            6 if self.agent_type == "build" else 3)
+        mem_stats = self.memory.get_stats()
+
+        config = Table(show_header=False, box=None, padding=(0, 1), expand=False)
+        config.add_column(style="bold bright_cyan", width=14, justify="right")
+        config.add_column(style="white", width=50)
+
+        config.add_row("[bright_cyan]🤖 Model[/]", f"[bold bright_white]{self.model}[/]")
+        config.add_row("[bright_green]⚡ Agent[/]", f"[bold bright_green]{self.agent_type.upper()}[/] [dim white]│ {tool_count} tools ready[/]")
+        config.add_row("[bright_yellow]📊 Context[/]", f"[bold bright_yellow]{self.client.options.get('num_ctx', 256000):,}[/] [dim]tokens[/]")
+        config.add_row("[bright_magenta]🎯 Temp[/]", f"[bold bright_magenta]{self.temperature:g}[/] [dim]stable creativity[/]")
+        config.add_row("[bright_cyan]🎲 Seed[/]", f"[bold bright_cyan]{self.seed}[/] [dim]--seed {self.seed} to replay[/]")
+        autotest_status = (f"{self._toggle_badge(True)} [dim]│ appends ‘test and fix it’[/]"
+                           if self.autotest_enabled else
+                           f"{self._toggle_badge(False)} [dim]│ /autotest on[/]")
+        config.add_row("[bright_green]🧪 Auto-test[/]", autotest_status)
+        config.add_row("[bright_blue]📁 Dir[/]", f"[dim bright_blue]{str(self.working_dir)[-45:]}[/]")
+
+        if mem_stats["total"] > 0:
+            config.add_row("[bright_cyan]🧠 Memory[/]", f"[bold green]{mem_stats['successes']}[/][dim]✓[/] [bold red]{mem_stats['failures']}[/][dim]✗[/] [dim]│ {mem_stats['total']} episodes[/]")
+        else:
+            config.add_row("[bright_cyan]🧠 Memory[/]", "[dim italic]empty ─ learning starts fresh[/]")
+
+        return Panel(
+            config,
+            title="[bold bright_green]◈ Session Configuration ◈[/]",
+            subtitle="[dim][ Neural Interface Active ][/]",
+            border_style="bright_green",
+            box=box.HEAVY
+        )
+
+    def _build_quick_commands_panel(self):
+        """Build Quick Commands with current values rather than startup values."""
+        inject_badge = self._toggle_badge(
+            getattr(self.agent, "inject_enabled", False))
+        confidence_badge = self._toggle_badge(
+            getattr(self.agent, "confidence_enabled", True))
+        autotest_badge = self._toggle_badge(self.autotest_enabled)
+
+        cmd_grid = Table(show_header=False, box=None, padding=(0, 1), expand=True)
+        cmd_grid.add_column(width=25)
+        cmd_grid.add_column(width=25)
+        cmd_grid.add_column(width=25)
+
+        cmd_grid.add_row(
+            "[bold #ffd700]/help[/] [dim]› commands[/]",
+            "[bold green]/prompt[/] [dim]› load file[/]",
+            "[bold bright_white]/tools[/] [dim]› list all[/]"
+        )
+        cmd_grid.add_row(
+            "[bold magenta]/memory[/] [dim]› episodes[/]",
+            f"[bold blue]/inject[/] [dim]›[/] {inject_badge}",
+            "[bold #ff8700]/clear[/] [dim]› clear chat[/]"
+        )
+        cmd_grid.add_row(
+            "[bold white]/model[/] [dim]› switch[/]",
+            f"[bold bright_magenta]/temp[/] [dim]›[/] "
+            f"[bold bright_magenta]{self.temperature:g}[/]",
+            "[bold bright_red]/quit[/] [dim]› exit[/]"
+        )
+        cmd_grid.add_row(
+            f"[bold bright_cyan]/confidence[/] [dim]›[/] {confidence_badge}",
+            f"[bold bright_cyan]/seed[/] [dim]›[/] "
+            f"[bold bright_cyan]{self.seed}[/]",
+            f"[bold bright_green]/autotest[/] [dim]›[/] {autotest_badge}"
+        )
+
+        return Panel(
+            cmd_grid,
+            title="[bold bright_cyan]◈ Quick Commands ◈[/]",
+            border_style="cyan",
+            box=box.ROUNDED
+        )
+
+    def _status_hud(self):
+        """Return the one idle-screen HUD rendered directly above the prompt."""
+        return Group(self._build_session_panel(), self._build_quick_commands_panel())
+
+    def _show_status_hud(self):
+        """Draw one measurable HUD instance so it can be erased without copies."""
+        status_render = LiveRender(self._status_hud(), vertical_overflow="visible")
+        self.console.print(status_render)
+        return status_render
+
+    def _erase_status_hud(self, status_render, user_input: str = ""):
+        """Erase the prompt line and its immediately preceding HUD in place.
+
+        LiveRender records its exact rendered height, including any table rows
+        added by terminal-width wrapping. The prompt is outside that renderable,
+        so erase its one or more wrapped rows first, then use Rich's own cursor
+        restoration for the measured HUD. This is the same terminal-safe erase
+        primitive used by Rich Live; no screen clear and no guessed panel height.
+        """
+        prompt_cells = cell_len("◈>: " + (user_input or ""))
+        prompt_rows = max(1, (prompt_cells + self.console.width - 1) // self.console.width)
+        erase_prompt = Control(
+            ControlType.CARRIAGE_RETURN,
+            *((ControlType.CURSOR_UP, 1),
+              (ControlType.ERASE_IN_LINE, 2)) * prompt_rows
+        )
+        self.console.control(erase_prompt)
+        self.console.control(status_render.restore_cursor())
+
+    def _print_plain_status(self):
+        """Fallback status summary for terminals where Rich is unavailable."""
+        inject_enabled = getattr(self.agent, "inject_enabled", False)
+        confidence_enabled = getattr(self.agent, "confidence_enabled", True)
+        mem_stats = self.memory.get_stats()
+        print(
+            f"Status: Model={self.model} | Agent={self.agent_type.upper()} | "
+            f"Temp={self.temperature:g} | Seed={self.seed} | "
+            f"Inject={'ON' if inject_enabled else 'OFF'} | "
+            f"Confidence={'ON' if confidence_enabled else 'OFF'} | "
+            f"Auto-test={'ON' if self.autotest_enabled else 'OFF'} | "
+            f"Memory={mem_stats['total']}"
+        )
     
     def print_banner(self):
         if self.console:
@@ -12702,102 +12853,12 @@ class CLI:
                 # Fallback if Live screen mode fails
                 pass
             
-            # After animation, print static banner and session info
+            # After animation, print the static banner. The status panels are
+            # a single transient HUD owned by run(), immediately above input.
             self.console.print(BANNER)
-            
-            # ═══════════════════════════════════════════════════════════════════
-            # VISUALLY STUNNING SESSION CONFIGURATION
-            # ═══════════════════════════════════════════════════════════════════
-            
-            # Build a beautiful gradient-style config panel
-            tool_count = 6 if self.agent_type == "build" else 3
-            mem_stats = self.memory.get_stats()
-            
-            # Create styled config table
-            config = Table(show_header=False, box=None, padding=(0, 1), expand=False)
-            config.add_column(style="bold bright_cyan", width=14, justify="right")
-            config.add_column(style="white", width=50)
-            
-            config.add_row("[bright_cyan]🤖 Model[/]", f"[bold bright_white]{self.model}[/]")
-            config.add_row("[bright_green]⚡ Agent[/]", f"[bold bright_green]{self.agent_type.upper()}[/] [dim white]│ {tool_count} tools ready[/]")
-            config.add_row("[bright_yellow]📊 Context[/]", f"[bold bright_yellow]{self.client.options.get('num_ctx', 256000):,}[/] [dim]tokens[/]")
-            config.add_row("[bright_magenta]🎯 Temp[/]", f"[bold bright_magenta]{self.client.options.get('temperature', 0.6)}[/] [dim]stable creativity[/]")
-            config.add_row("[bright_cyan]🎲 Seed[/]", f"[bold bright_cyan]{self.seed}[/] [dim]--seed {self.seed} to replay[/]")
-            autotest_status = (f"{self._toggle_badge(True)} [dim]│ appends ‘test and fix it’[/]"
-                               if self.autotest_enabled else
-                               f"{self._toggle_badge(False)} [dim]│ /autotest on[/]")
-            config.add_row("[bright_green]🧪 Auto-test[/]", autotest_status)
-            config.add_row("[bright_blue]📁 Dir[/]", f"[dim bright_blue]{str(self.working_dir)[-45:]}[/]")
-            
-            if mem_stats["total"] > 0:
-                config.add_row("[bright_cyan]🧠 Memory[/]", f"[bold green]{mem_stats['successes']}[/][dim]✓[/] [bold red]{mem_stats['failures']}[/][dim]✗[/] [dim]│ {mem_stats['total']} episodes[/]")
-            else:
-                config.add_row("[bright_cyan]🧠 Memory[/]", "[dim italic]empty ─ learning starts fresh[/]")
-            
-            self.console.print(Panel(
-                config,
-                title="[bold bright_green]◈ Session Configuration ◈[/]",
-                subtitle="[dim][ Neural Interface Active ][/]",
-                border_style="bright_green",
-                box=box.HEAVY
-            ))
-            
-            # ═══════════════════════════════════════════════════════════════════
-            # BEAUTIFUL COMMAND REFERENCE PANEL
-            # ═══════════════════════════════════════════════════════════════════
-
-            # Show the actual live toggle state, not an ambiguous gray "on|off"
-            # usage hint. The banner is normally printed before Agent creation,
-            # so the getattr fallbacks intentionally mirror Agent's defaults.
-            inject_badge = self._toggle_badge(
-                getattr(self.agent, "inject_enabled", False))
-            confidence_badge = self._toggle_badge(
-                getattr(self.agent, "confidence_enabled", True))
-            autotest_badge = self._toggle_badge(self.autotest_enabled)
-            
-            cmd_grid = Table(show_header=False, box=None, padding=(0, 1), expand=True)
-            cmd_grid.add_column(width=25)
-            cmd_grid.add_column(width=25)
-            cmd_grid.add_column(width=25)
-            
-            # Row 1 - Primary commands
-            cmd_grid.add_row(
-                "[bold #ffd700]/help[/] [dim]› commands[/]",
-                "[bold green]/prompt[/] [dim]› load file[/]",
-                "[bold bright_white]/tools[/] [dim]› list all[/]"
-            )
-            # Row 2 - Session commands
-            cmd_grid.add_row(
-                "[bold magenta]/memory[/] [dim]› episodes[/]",
-                f"[bold blue]/inject[/] [dim]›[/] {inject_badge}",
-                "[bold #ff8700]/clear[/] [dim]› clear chat[/]"
-            )
-            # Row 3 - Config commands
-            cmd_grid.add_row(
-                "[bold white]/model[/] [dim]› switch[/]",
-                f"[bold bright_magenta]/temp[/] [dim]›[/] "
-                f"[bold bright_magenta]{self.temperature:g}[/]",
-                "[bold bright_red]/quit[/] [dim]› exit[/]"
-            )
-            # Row 4 - V24 semantic reflection, V45.9 seed, V180.1 auto-test
-            cmd_grid.add_row(
-                f"[bold bright_cyan]/confidence[/] [dim]›[/] {confidence_badge}",
-                "[bold bright_cyan]/seed[/] [dim]› n|random[/]",
-                f"[bold bright_green]/autotest[/] [dim]›[/] {autotest_badge}"
-            )
-            
-            self.console.print(Panel(
-                cmd_grid,
-                title="[bold bright_cyan]◈ Quick Commands ◈[/]",
-                border_style="cyan",
-                box=box.ROUNDED
-            ))
-            
-            self.console.print()  # Spacing
         else:
             print(BANNER)
-            print(f"Model: {self.model} | Agent: {self.agent_type} | Verbose: {self.verbose} | "
-                  f"Auto-test: {'ON' if self.autotest_enabled else 'OFF'}")
+            self._print_plain_status()
             print(f"Dir: {self.working_dir}")
             print("/help commands | /autotest on|off | /prompt load file | /tools list | /quit exit\n")
     
@@ -13611,18 +13672,45 @@ class CLI:
             return
         
         while True:
+            status_render = None
+            hud_visible = False
+            user_input = ""
             try:
-                user_input = Prompt.ask("\n[bold bright_green]◈>[/bold bright_green]") if self.console else input("\n> ")
+                if self.console:
+                    # V180.5: there is exactly one idle HUD. It is measured as
+                    # it renders, then removed together with the submitted input
+                    # line before any command output or task dashboard begins.
+                    status_render = self._show_status_hud()
+                    hud_visible = True
+                    user_input = Prompt.ask(
+                        "[bold bright_green]◈>[/bold bright_green]",
+                        console=self.console)
+                    self._erase_status_hud(status_render, user_input)
+                    hud_visible = False
+                else:
+                    user_input = input("\n> ")
+
                 if not user_input.strip():
                     continue
+
+                # The terminal already echoed this line inside the transient
+                # HUD. Reprint it once after erasing that HUD so command/task
+                # history remains readable without retaining a stale panel.
+                if self.console:
+                    self.print(f"[bold bright_green]◈>:[/] {escape(user_input)}")
+
                 if user_input.startswith("/"):
                     if not await self.handle_command(user_input):
                         break
                     continue
                 await self.process_message(user_input)
             except KeyboardInterrupt:
+                if hud_visible and status_render is not None:
+                    self._erase_status_hud(status_render, user_input)
                 self.print("\n[yellow]Use /quit to exit[/yellow]")
             except EOFError:
+                if hud_visible and status_render is not None:
+                    self._erase_status_hud(status_render, user_input)
                 break
         
         # Goodbye with matrix fade
