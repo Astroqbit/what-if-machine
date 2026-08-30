@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 """
-What-if Machine v180.1 - Nested Learning Agent for the Terminal
+What-if Machine v180.3 - Nested Learning Agent for the Terminal
 Enhanced with Matrix-themed visuals, recursive self-correction, and episode memory
 
-CURRENT VERSION: V180.1          (this file: what_if_machine_v180_1.py)
+CURRENT VERSION: V180.3          (this file: what_if_machine_v180_1.py)
 
 V180.1 - AUTO-TEST IS THE EXISTING PHRASE, APPENDED AT THE EXISTING DOOR.
 
@@ -2401,8 +2401,14 @@ except ImportError:
 
 class MatrixRain:
     """Generates matrix-style falling characters - mirrors the agent's token flow"""
-    
-    CHARS = "アイウWオNキクHコMシスTソタFツテトナ-ヌネノAヒフCホマミムメモヤユEラIルレAワン01"
+
+    # IMPORTANT: every glyph is exactly one terminal cell wide. The former
+    # full-width Katakana occupied two Windows Terminal cells while the grid
+    # counted each glyph as one column. Random frames therefore wrapped into
+    # extra physical rows, pushing the animation's bottom border off-screen,
+    # then appeared to shrink again when the character mix changed. Half-width
+    # Katakana preserves the Matrix look without changing the panel geometry.
+    CHARS = "ｱｲｳWｵNｷｸHｺMｼｽTｿﾀFﾂﾃﾄﾅ-ﾇﾈﾉAﾋﾌCﾎﾏﾐﾑﾒﾓﾔﾕEﾗIﾙﾚAﾜﾝ01"
     
     def __init__(self, width=60, height=6):
         self.width = max(10, width)
@@ -2433,7 +2439,7 @@ class MatrixRain:
         """Render the current state as Rich Text"""
         if not RICH_AVAILABLE:
             return ""
-        text = Text()
+        text = Text(no_wrap=True, overflow="crop")
         for y, row in enumerate(self.chars):
             for x, char in enumerate(row):
                 if char != ' ':
@@ -2447,7 +2453,8 @@ class MatrixRain:
                         text.append(char, style="dim green")
                 else:
                     text.append(' ')
-            text.append('\n')
+            if y < self.height - 1:
+                text.append('\n')
         return text
 
 
@@ -12352,15 +12359,30 @@ def create_agent(agent_type: str, client: OllamaClient, working_dir: str = None,
 # CLI
 # =============================================================================
 
-BANNER = """
+def _banner_logo_row(logo_line: str) -> str:
+    """Style the WHAT-IF face white and its line-art depth Matrix green."""
+    content = ("  " + logo_line).ljust(78)
+    styled = ["[bold bright_green]║[/]"]
+    for char in content:
+        if char == "█":
+            styled.append("[bold bright_white]█[/]")
+        elif char in "╔╗╚╝║═":
+            styled.append(f"[bold bright_green]{char}[/]")
+        else:
+            styled.append(char)
+    styled.append("[bold bright_green]║[/]")
+    return "".join(styled)
+
+
+BANNER = f"""
 [bold bright_green]╔══════════════════════════════════════════════════════════════════════════════╗[/]
 [bold bright_green]║[/]                                                                              [bold bright_green]║[/]
-[bold bright_green]║[/]  [bold bright_white]██╗    ██╗██╗  ██╗ █████╗ ████████╗    ██╗███████╗[/]                          [bold bright_green]║[/]
-[bold bright_green]║[/]  [bold bright_white]██║    ██║██║  ██║██╔══██╗╚══██╔══╝    ██║██╔════╝[/]                          [bold bright_green]║[/]
-[bold bright_green]║[/]  [bold bright_white]██║ █╗ ██║███████║███████║   ██║ █████╗██║█████╗[/]                            [bold bright_green]║[/]
-[bold bright_green]║[/]  [bold bright_white]██║███╗██║██╔══██║██╔══██║   ██║ ╚════╝██║██╔══╝[/]                            [bold bright_green]║[/]
-[bold bright_green]║[/]  [bold bright_white]╚███╔███╔╝██║  ██║██║  ██║   ██║       ██║██║[/]                               [bold bright_green]║[/]
-[bold bright_green]║[/]   [bold bright_white]╚══╝╚══╝ ╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝       ╚═╝╚═╝[/]                               [bold bright_green]║[/]
+{_banner_logo_row("██╗    ██╗██╗  ██╗ █████╗ ████████╗    ██╗███████╗")}
+{_banner_logo_row("██║    ██║██║  ██║██╔══██╗╚══██╔══╝    ██║██╔════╝")}
+{_banner_logo_row("██║ █╗ ██║███████║███████║   ██║ █████╗██║█████╗")}
+{_banner_logo_row("██║███╗██║██╔══██║██╔══██║   ██║ ╚════╝██║██╔══╝")}
+{_banner_logo_row("╚███╔███╔╝██║  ██║██║  ██║   ██║       ██║██║")}
+{_banner_logo_row(" ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝       ╚═╝╚═╝")}
 [bold bright_green]║[/]                                                                              [bold bright_green]║[/]
 [bold bright_green]║[/]              [bright_white]▀▄▀▄▀▄[/] [bold bright_cyan]M A C H I N E[/] [bright_white]▄▀▄▀▄▀[/]                                     [bold bright_green]║[/]
 [bold bright_green]║[/]                                                                              [bold bright_green]║[/]
@@ -12519,8 +12541,11 @@ class CLI:
             
             # Get terminal size for full screen effect
             term_size = shutil.get_terminal_size((80, 24))
-            width = min(term_size.columns - 4, 90)
-            height = min(term_size.lines - 6, 18)
+            # Panel border (2 cells) + its horizontal padding (2 cells) leave
+            # exactly columns-4 cells for the rain. Cap only very wide windows
+            # so the animation remains fast, while ordinary windows stay full.
+            width = max(10, min(term_size.columns - 4, 160))
+            height = max(4, min(term_size.lines - 6, 18))
             
             # The banner lines we'll reveal through the rain (all 75 chars wide)
             banner_lines = [
@@ -12551,7 +12576,7 @@ class CLI:
                     # Phase 1: Full matrix rain builds up (fills screen)
                     for frame in range(30):
                         matrix.step()
-                        text = Text()
+                        text = Text(no_wrap=True, overflow="crop")
                         for y in range(height):
                             for x in range(width):
                                 char = matrix.chars[y % matrix.height][x % matrix.width]
@@ -12564,7 +12589,8 @@ class CLI:
                                         text.append(char, style="dim green")
                                 else:
                                     text.append(random.choice(' ') if random.random() > 0.05 else random.choice('01'), style="dim green")
-                            text.append('\n')
+                            if y < height - 1:
+                                text.append('\n')
                         live.update(Panel(text, border_style="bright_green", box=box.DOUBLE, 
                                          title="[bold bright_green]◈ INITIALIZING ◈[/bold bright_green]"))
                         time.sleep(0.04)
@@ -12574,7 +12600,7 @@ class CLI:
                         matrix.step()
                         reveal_progress = frame / 35.0  # Goes past 1.0 intentionally
                         
-                        text = Text()
+                        text = Text(no_wrap=True, overflow="crop")
                         for y in range(height):
                             for x in range(width):
                                 # Check if this position is part of the banner
@@ -12599,7 +12625,7 @@ class CLI:
                                     if random.random() < reveal_threshold:
                                         # Show banner character with styling
                                         if banner_char in '║╔╗╚╝═':
-                                            text.append(banner_char, style="bright_green")
+                                            text.append(banner_char, style="bold bright_green")
                                         elif banner_char == '█':
                                             text.append(banner_char, style="bold bright_white")
                                         elif banner_char == '◈':
@@ -12630,14 +12656,15 @@ class CLI:
                                             text.append(m_char, style="dim green")
                                     else:
                                         text.append(' ')
-                            text.append('\n')
+                            if y < height - 1:
+                                text.append('\n')
                         
                         live.update(Panel(text, border_style="bright_green", box=box.DOUBLE))
                         time.sleep(0.04)
                     
                     # Phase 3: Solid banner with subtle shimmer (settling)
                     for frame in range(20):
-                        text = Text()
+                        text = Text(no_wrap=True, overflow="crop")
                         for y in range(height):
                             for x in range(width):
                                 banner_y = y - start_row
@@ -12648,7 +12675,7 @@ class CLI:
                                 if in_banner and banner_x < len(banner_lines[banner_y]):
                                     banner_char = banner_lines[banner_y][banner_x]
                                     if banner_char in '║╔╗╚╝═':
-                                        text.append(banner_char, style="bright_green")
+                                        text.append(banner_char, style="bold bright_green")
                                     elif banner_char == '█':
                                         # Subtle pulse effect on the main text
                                         pulse = "bold bright_white" if (frame + banner_x) % 10 < 5 else "bright_white"
@@ -12662,10 +12689,11 @@ class CLI:
                                 else:
                                     # Rare background shimmer
                                     if random.random() < 0.008:
-                                        text.append(random.choice('01アイ'), style="dim green")
+                                        text.append(random.choice('01ｱｲ'), style="dim green")
                                     else:
                                         text.append(' ')
-                            text.append('\n')
+                            if y < height - 1:
+                                text.append('\n')
                         
                         live.update(Panel(text, border_style="bright_green", box=box.DOUBLE))
                         time.sleep(0.05)
